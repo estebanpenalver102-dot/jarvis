@@ -1,84 +1,131 @@
 'use client'
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useRef } from 'react'
 
-const COLORS: Record<string,string> = {
-  research:'#00d4ff',sales:'#ff6b35',coding:'#a855f7',
-  cto:'#22c55e',operations:'#f59e0b',browser:'#ec4899',general:'#64748b'
+interface Node { x: number; y: number; z: number; vx: number; vy: number; vz: number }
+
+function project(x: number, y: number, z: number, cx: number, cy: number): [number, number, number] {
+  const fov = 400
+  const scale = fov / (fov + z)
+  return [cx + x * scale, cy + y * scale, scale]
 }
 
-export default function JarvisOrb({ thinking, onActivate, projects }: any) {
-  const [hovered, setHovered] = useState(false)
-  const [tip, setTip] = useState<any>(null)
-  const [drag, setDrag] = useState<any>(null)
-  const [drop, setDrop] = useState<any>(null)
+export default function JarvisOrb({ size = 420, active = false }: { size?: number; active?: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    const cx = size / 2, cy = size / 2
+    const R = size * 0.38
+    const NODE_COUNT = 80
+
+    // Generate nodes on sphere surface
+    const nodes: Node[] = Array.from({ length: NODE_COUNT }, () => {
+      const theta = Math.random() * Math.PI * 2
+      const phi = Math.acos(2 * Math.random() - 1)
+      return {
+        x: R * Math.sin(phi) * Math.cos(theta),
+        y: R * Math.sin(phi) * Math.sin(theta),
+        z: R * Math.cos(phi),
+        vx: (Math.random() - 0.5) * 0.003,
+        vy: (Math.random() - 0.5) * 0.003,
+        vz: (Math.random() - 0.5) * 0.003,
+      }
+    })
+
+    let angle = 0
+    let frame = 0
+    let raf: number
+
+    const draw = () => {
+      frame++
+      angle += active ? 0.006 : 0.003
+      canvas.width = size
+      canvas.height = size
+
+      // Background glow
+      const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.5)
+      bg.addColorStop(0, 'rgba(255, 140, 20, 0.08)')
+      bg.addColorStop(0.5, 'rgba(180, 80, 10, 0.03)')
+      bg.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = bg
+      ctx.fillRect(0, 0, size, size)
+
+      // Rotate nodes
+      const cos = Math.cos(angle), sin = Math.sin(angle)
+      const projected = nodes.map(n => {
+        const rx = n.x * cos - n.z * sin
+        const rz = n.x * sin + n.z * cos
+        return project(rx, n.y, rz, cx, cy)
+      })
+
+      // Draw connections
+      for (let i = 0; i < NODE_COUNT; i++) {
+        for (let j = i + 1; j < NODE_COUNT; j++) {
+          const [x1, y1, s1] = projected[i]
+          const [x2, y2, s2] = projected[j]
+          const dist = Math.hypot(x1 - x2, y1 - y2)
+          if (dist < R * 0.55) {
+            const avgScale = (s1 + s2) / 2
+            const alpha = (1 - dist / (R * 0.55)) * avgScale * 0.55
+            ctx.beginPath()
+            ctx.moveTo(x1, y1)
+            ctx.lineTo(x2, y2)
+            ctx.strokeStyle = `rgba(255, ${130 + Math.floor(avgScale * 60)}, ${Math.floor(avgScale * 30)}, ${alpha})`
+            ctx.lineWidth = avgScale * 0.6
+            ctx.stroke()
+          }
+        }
+      }
+
+      // Draw nodes
+      projected.forEach(([px, py, sc]) => {
+        const r = sc * 2.5
+        const grd = ctx.createRadialGradient(px, py, 0, px, py, r * 3)
+        grd.addColorStop(0, `rgba(255, 200, 80, ${sc * 0.9})`)
+        grd.addColorStop(1, 'rgba(255, 120, 20, 0)')
+        ctx.beginPath()
+        ctx.arc(px, py, r * 3, 0, Math.PI * 2)
+        ctx.fillStyle = grd
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(px, py, r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255, 220, 120, ${sc})`
+        ctx.fill()
+      })
+
+      // Core glow
+      const pulse = 0.85 + Math.sin(frame * 0.04) * 0.15
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 0.35 * pulse)
+      core.addColorStop(0, `rgba(255, 200, 80, ${active ? 0.5 : 0.3})`)
+      core.addColorStop(0.4, `rgba(255, 120, 30, ${active ? 0.15 : 0.08})`)
+      core.addColorStop(1, 'rgba(255, 80, 0, 0)')
+      ctx.beginPath()
+      ctx.arc(cx, cy, R * 0.35 * pulse, 0, Math.PI * 2)
+      ctx.fillStyle = core
+      ctx.fill()
+
+      // Outer ring
+      ctx.beginPath()
+      ctx.arc(cx, cy, R * 1.02, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(255, 140, 40, ${0.06 + Math.sin(frame * 0.03) * 0.02})`
+      ctx.lineWidth = 1
+      ctx.stroke()
+
+      raf = requestAnimationFrame(draw)
+    }
+
+    draw()
+    return () => cancelAnimationFrame(raf)
+  }, [size, active])
 
   return (
-    <div className="relative flex items-center justify-center" style={{width:580,height:580}}>
-      {[300,370,440].map((sz,i)=>(
-        <motion.div key={sz} className="orb-ring absolute"
-          style={{width:sz,height:sz,top:'50%',left:'50%',transform:'translate(-50%,-50%)'}}
-          animate={{rotate:i%2===0?360:-360,opacity:hovered?0.5:0.15}}
-          transition={{duration:9+i*4,repeat:Infinity,ease:'linear'}} />
-      ))}
-      <AnimatePresence>
-        {hovered && projects.map((p:any,i:number)=>{
-          const a=(i/projects.length)*2*Math.PI-Math.PI/2
-          const x=Math.cos(a)*210, y=Math.sin(a)*210
-          const c=COLORS[p.name]||'#00d4ff'
-          return (
-            <motion.div key={p.name} className="absolute flex flex-col items-center cursor-pointer z-10"
-              style={{left:'50%',top:'50%'}}
-              initial={{opacity:0,x,y,scale:0}} animate={{opacity:1,x,y,scale:1}} exit={{opacity:0,scale:0}}
-              transition={{delay:i*0.06,type:'spring',stiffness:220}}
-              draggable onDragStart={()=>setDrag(p)} onDragEnd={()=>{setDrag(null);setDrop(null)}}
-              onDragOver={e=>{e.preventDefault();setDrop(p)}}
-              onDrop={()=>{ if(drag&&drop&&drag.name!==drop.name) console.log(`${drag.name} → ${drop.name}`) }}
-              onClick={()=>setTip(tip?.name===p.name?null:p)}
-              whileHover={{scale:1.25}}>
-              <div className="w-12 h-12 rounded-full flex items-center justify-center text-xs font-bold uppercase"
-                   style={{background:`${c}22`,border:`2px solid ${c}`,color:c,
-                           boxShadow:drop?.name===p.name?`0 0 20px ${c}`:'none'}}>
-                {p.name.slice(0,2)}
-              </div>
-              <span className="text-xs mt-1 font-mono" style={{color:c,opacity:.75}}>{p.name}</span>
-            </motion.div>
-          )
-        })}
-      </AnimatePresence>
-      <motion.div className="relative z-10 rounded-full flex items-center justify-center cursor-pointer select-none"
-        style={{width:150,height:150,background:'radial-gradient(circle at 35% 35%,#0060dd,#000d2a)',border:'2px solid rgba(0,212,255,0.5)'}}
-        animate={{boxShadow:thinking
-          ?['0 0 40px #00d4ff,0 0 80px #0080ff','0 0 80px #00d4ff,0 0 180px #0080ff']
-          :['0 0 20px #00d4ff44','0 0 50px #00d4ff99'],
-          scale:hovered?1.07:1}}
-        transition={{duration:thinking?.35:2,repeat:Infinity,repeatType:'reverse'}}
-        onHoverStart={()=>setHovered(true)} onHoverEnd={()=>setHovered(false)}
-        onClick={onActivate}>
-        <div className="text-center">
-          <div className="glow-text text-lg font-bold tracking-widest">J.A.R.V.I.S</div>
-          <div className="text-xs text-blue-300/50 mt-1 font-mono">
-            {thinking?'THINKING..':hovered?'TAP TO CHAT':'AI OS'}
-          </div>
-          {thinking&&<motion.div className="mt-2 flex gap-1 justify-center">
-            {[0,1,2].map(i=>(
-              <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-jarvis-glow"
-                animate={{scaleY:[1,2.2,1]}} transition={{duration:.55,delay:i*.15,repeat:Infinity}} />
-            ))}
-          </motion.div>}
-        </div>
-      </motion.div>
-      <AnimatePresence>
-        {tip&&(
-          <motion.div className="absolute glass rounded-xl p-2.5 z-20 max-w-xs"
-            style={{bottom:16,left:'50%',transform:'translateX(-50%)'}}
-            initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <p className="text-xs font-mono" style={{color:COLORS[tip.name]||'#00d4ff'}}>
-              [{tip.name.toUpperCase()}] {tip.specialty}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    <canvas
+      ref={canvasRef}
+      width={size}
+      height={size}
+      style={{ display: 'block' }}
+    />
   )
 }
