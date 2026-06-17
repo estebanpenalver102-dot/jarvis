@@ -19,16 +19,6 @@ services:
         fromDatabase:
           name: jarvis-db
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: jarvis-redis
-          type: redis
-          property: connectionString
-
-  - type: redis
-    name: jarvis-redis
-    plan: free
-    region: oregon
 
 databases:
   - name: jarvis-db
