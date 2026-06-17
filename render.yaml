@@ -3,6 +3,7 @@ services:
     name: jarvis
     runtime: docker
     dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
     region: oregon
     plan: free
     healthCheckPath: /health
