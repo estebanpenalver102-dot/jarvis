@@ -1,23 +1,23 @@
+"""
+JARVIS Research Agent — web research using browser automation + LLM synthesis.
+"""
 from agents.base_agent import BaseAgent
-from loguru import logger
+from browser.actions import search_and_browse, browse_and_extract
+from llm.client import chat_completion
+
 
 class ResearchAgent(BaseAgent):
     name = "research"
-    description = "Web research, information retrieval, market analysis"
+    description = "Web research, data lookup, market analysis, competitor tracking"
 
-    def __init__(self, db, llm_client=None):
-        super().__init__(db)
-        self.llm = llm_client
-
-    async def run(self, goal: str, context: dict = None) -> dict:
-        await self.log_task_start(goal)
-        # Phase 1: scaffold response; Phase 4 adds Playwright web automation
-        result = {
-            "status": "scaffolded",
-            "agent": self.name,
-            "goal": goal,
-            "result": f"Research agent received goal: '{goal}'. Browser automation will be wired in Phase 4.",
-        }
-        await self.remember(f"Research task received: {goal}", category="episodic")
-        await self.log_task_end(result)
-        return result
+    async def run(self, goal: str, url: str = None, **kwargs) -> dict:
+        if url:
+            result = await browse_and_extract(url, goal)
+            return {"agent": self.name, "result": result.get("analysis", ""), "url": result.get("url")}
+        else:
+            result = await search_and_browse(goal, goal)
+            return {
+                "agent": self.name,
+                "result": result.get("synthesis", ""),
+                "sources": result.get("sources", []),
+            }
