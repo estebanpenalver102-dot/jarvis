@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://host.docker.internal:11434"
     # DB
     database_url: str = "postgresql+asyncpg://jarvis:jarvis_secret@postgres:5432/jarvis"
-    redis_url: str = "redis://redis:6379/0"
+    redis_url: Optional[str] = None  # Optional - add Redis later for caching
     # Auth
     secret_key: str = "change-me"
     api_key_header: str = "X-JARVIS-Key"
