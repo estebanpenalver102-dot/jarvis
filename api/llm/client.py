@@ -26,6 +26,13 @@ def _make_client(base_url: str = None, api_key: str = None) -> AsyncOpenAI:
     return AsyncOpenAI(**kwargs)
 
 
+def get_openai() -> AsyncOpenAI:
+    """Return an AsyncOpenAI client if API key is configured, else None."""
+    if not settings.openai_api_key:
+        return None
+    return _make_client(api_key=settings.openai_api_key)
+
+
 async def _try_completion(client: AsyncOpenAI, model: str, messages: list, max_tokens: int) -> Optional[str]:
     try:
         resp = await client.chat.completions.create(
