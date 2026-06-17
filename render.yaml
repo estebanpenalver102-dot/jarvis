@@ -31,6 +31,7 @@ databases:
     plan: free
     region: oregon
 
+redis:
   - name: jarvis-redis
     plan: free
     region: oregon
