@@ -1,28 +1,55 @@
+databases:
+  - name: jarvis-db
+    databaseName: jarvis
+    user: jarvis
+    plan: free
+
+redis:
+  - name: jarvis-redis
+    plan: free
+
 services:
   - type: web
-    name: jarvis
-    runtime: docker
+    name: jarvis-api
+    env: docker
     dockerfilePath: ./api/Dockerfile
     dockerContext: ./api
-    region: oregon
     plan: free
     healthCheckPath: /health
     envVars:
-      - key: PORT
-        value: 8000
-      - key: PYTHONUNBUFFERED
-        value: "1"
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: SECRET_KEY
-        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: jarvis-db
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: jarvis-redis
+          type: redis
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
 
-databases:
-  - name: jarvis-db
-    databaseName: jarvis
+  - type: web
+    name: jarvis-ui
+    env: node
+    rootDir: ui
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     plan: free
-    region: oregon
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: jarvis-api
+          type: web
+          property: host
+          envVarPrefix: https://
+      - key: PORT
+        value: 3000
