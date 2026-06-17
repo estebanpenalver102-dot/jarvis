@@ -1,0 +1,18 @@
+{
+  "repos": [
+    {
+      "name": "NousResearch/hermes-agent",
+      "url": "https://github.com/NousResearch/hermes-agent",
+      "ingested": true,
+      "ingested_at": "2026-06-17"
+    },
+    {
+      "name": "open-jarvis/OpenJarvis", 
+      "url": "https://github.com/open-jarvis/OpenJarvis",
+      "ingested": true,
+      "ingested_at": "2026-06-17",
+      "key_patterns": ["plugin_architecture", "intent_routing", "skill_system", "voice_first"]
+    }
+  ],
+  "auto_ingest_on_startup": true
+}
