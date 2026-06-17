@@ -1,166 +1,282 @@
-'use client';
-import { useState, useRef, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
-import MessageBubble from '../components/MessageBubble';
-import VoiceButton from '../components/VoiceButton';
-import StatusBar from '../components/StatusBar';
+'use client'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import JarvisOrb from '../components/JarvisOrb'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://jarvis-mq5i.onrender.com';
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://jarvis-mq5i.onrender.com'
 
-const WELCOME = {
-  role: 'assistant',
-  content: 'Hey — I'm JARVIS. Your personal AI operating system. I have access to web search, browser automation, code execution, memory across all our conversations, and voice. What are we working on?',
-  agent: 'JARVIS OS',
-  timestamp: Date.now(),
-};
+interface Message { role: 'user' | 'assistant'; content: string; agent?: string; ts: number }
 
-const SUGGESTIONS = [
-  'Search the web for the latest AI agent frameworks',
-  'Write a Python script to analyze CSV data',
-  'What do you remember about my projects?',
-  'Research and summarize the Hermes Agent architecture',
-];
+const MODES = ['JARVIS', 'Research', 'Voice', 'Browser', 'Code']
 
 export default function Home() {
-  const [messages, setMessages] = useState([WELCOME]);
-  const [input, setInput] = useState('');
-  const [streaming, setStreaming] = useState(false);
-  const [agent, setAgent] = useState('jarvis');
-  const [mode, setMode] = useState('chat');
-  const [agentStatus, setAgentStatus] = useState('Ready');
-  const [conversations, setConversations] = useState(['Getting started with JARVIS']);
-  const bottomRef = useRef(null);
-  const textareaRef = useRef(null);
-  const historyRef = useRef([]);
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [thinking, setThinking] = useState(false)
+  const [active, setActive] = useState(false)
+  const [mode, setMode] = useState('JARVIS')
+  const [status, setStatus] = useState('Idle')
+  const [recording, setRecording] = useState(false)
+  const [chatOpen, setChatOpen] = useState(true)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const textRef = useRef<HTMLTextAreaElement>(null)
+  const mediaRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<BlobPart[]>([])
+  const historyRef = useRef<{ role: string; content: string }[]>([])
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, thinking])
+
+  const send = useCallback(async (text: string) => {
+    const content = text.trim()
+    if (!content || thinking) return
+    setInput('')
+    if (textRef.current) textRef.current.style.height = 'auto'
+    const userMsg: Message = { role: 'user', content, ts: Date.now() }
+    setMessages(prev => [...prev, userMsg])
+    historyRef.current = [...historyRef.current, { role: 'user', content }]
+    setThinking(true)
+    setActive(true)
+    setStatus('Processing…')
+    try {
+      const res = await fetch(`${API}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: content, conversation_history: historyRef.current.slice(-12), agent_preference: mode.toLowerCase() }),
+      })
+      const data = await res.json()
+      const reply: string = data.response || data.message || '…'
+      const agentMsg: Message = { role: 'assistant', content: reply, agent: data.agent_used || 'JARVIS', ts: Date.now() }
+      setMessages(prev => [...prev, agentMsg])
+      historyRef.current = [...historyRef.current, { role: 'assistant', content: reply }]
+      setStatus(data.agent_used ? `${data.agent_used} responded` : 'Ready')
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error — is the API online?', ts: Date.now() }])
+      setStatus('Error')
+    }
+    setThinking(false)
+    setActive(false)
+  }, [thinking, mode])
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) }
+  }
 
   const autoResize = () => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
-  };
+    const el = textRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px'
+  }
 
-  const sendMessage = async (text) => {
-    const content = (text || input).trim();
-    if (!content || streaming) return;
-    setInput('');
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
-
-    const userMsg = { role: 'user', content, timestamp: Date.now() };
-    const newMsgs = [...messages, userMsg];
-    setMessages(newMsgs);
-    historyRef.current = [...historyRef.current, { role: 'user', content }];
-
-    // Save to recent conversations
-    if (messages.length === 1) {
-      setConversations(prev => [content.slice(0, 50), ...prev.slice(0, 9)]);
-    }
-
-    setStreaming(true);
-    setAgentStatus('Processing...');
-
+  const startVoice = async () => {
     try {
-      const resp = await fetch(`${API}/chat`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, conversation_history: historyRef.current.slice(-10), agent_preference: agent }),
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      const reply = data.response || data.message || 'No response';
-      const agentName = data.agent_used || 'JARVIS';
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const rec = new MediaRecorder(stream)
+      chunksRef.current = []
+      rec.ondataavailable = e => chunksRef.current.push(e.data)
+      rec.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        const b64 = await new Promise<string>(resolve => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1])
+          reader.readAsDataURL(blob)
+        })
+        try {
+          const res = await fetch(`${API}/voice/transcribe`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio_b64: b64, mime_type: 'audio/webm' })
+          })
+          const d = await res.json()
+          if (d.transcript) send(d.transcript)
+        } catch {}
+        stream.getTracks().forEach(t => t.stop())
+      }
+      rec.start()
+      mediaRef.current = rec
+      setRecording(true)
+    } catch {}
+  }
 
-      const aiMsg = { role: 'assistant', content: reply, agent: agentName, timestamp: Date.now() };
-      setMessages(prev => [...prev, aiMsg]);
-      historyRef.current = [...historyRef.current, { role: 'assistant', content: reply }];
-      setAgentStatus(`${agentName} · ${data.memory_context ? data.memory_context + ' memories' : 'ready'}`);
-    } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message}. Check that JARVIS backend is running.`, agent: 'System', timestamp: Date.now() }]);
-      setAgentStatus('Error');
-    }
-    setStreaming(false);
-  };
+  const stopVoice = () => {
+    mediaRef.current?.stop()
+    setRecording(false)
+  }
 
-  const handleKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  };
-
-  const newChat = () => {
-    setMessages([WELCOME]);
-    historyRef.current = [];
-    setAgentStatus('Ready');
-  };
-
-  const isEmpty = messages.length === 1 && messages[0] === WELCOME;
+  const orbSize = typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.55, 520) : 420
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-base)' }}>
-      <Sidebar activeAgent={agent} onAgentSelect={setAgent} conversations={conversations} onNewChat={newChat} />
+    <div style={{ position: 'fixed', inset: 0, background: '#000', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <StatusBar mode={mode} onModeChange={setMode} streaming={streaming} agentStatus={agentStatus} />
+      {/* Ambient background */}
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(180,80,10,0.07) 0%, rgba(0,0,0,0) 70%)', pointerEvents: 'none' }} />
 
-        {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 0' }}>
-          <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 20px' }}>
-            {messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)}
+      {/* Corner HUD lines */}
+      {[['top','left'],['top','right'],['bottom','left'],['bottom','right']].map(([v, h]) => (
+        <div key={v+h} style={{
+          position: 'absolute', [v]: 16, [h]: 16, width: 32, height: 32,
+          borderTop: v === 'top' ? '1px solid rgba(255,140,40,0.3)' : 'none',
+          borderBottom: v === 'bottom' ? '1px solid rgba(255,140,40,0.3)' : 'none',
+          borderLeft: h === 'left' ? '1px solid rgba(255,140,40,0.3)' : 'none',
+          borderRight: h === 'right' ? '1px solid rgba(255,140,40,0.3)' : 'none',
+          pointerEvents: 'none'
+        }} />
+      ))}
 
-            {streaming && (
-              <div className="fade-in" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #7c6aff, #00d4ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0, marginTop: 2 }}>J</div>
-                <div className="message-ai" style={{ padding: '12px 16px', display: 'flex', gap: 5, alignItems: 'center' }}>
-                  {[0,1,2].map(i => <div key={i} className="typing-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--text-secondary)' }}></div>)}
-                </div>
-              </div>
-            )}
-
-            {/* Suggestion chips — only on welcome screen */}
-            {isEmpty && (
-              <div style={{ marginTop: 32 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, textAlign: 'center' }}>Try asking</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {SUGGESTIONS.map((s, i) => (
-                    <button key={i} onClick={() => sendMessage(s)}
-                      style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, textAlign: 'left', lineHeight: 1.4, transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                    >{s}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
+      {/* Top bar */}
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff9500', boxShadow: '0 0 8px #ff9500' }} />
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,200,80,0.9)', textTransform: 'uppercase' }}>JARVIS</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,140,40,0.5)', letterSpacing: 1 }}>v1.0 · ONLINE</span>
         </div>
-
-        {/* Input area */}
-        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
-          <div style={{ maxWidth: 760, margin: '0 auto' }}>
-            <div className="input-glow" style={{ display: 'flex', alignItems: 'flex-end', gap: 10, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 16, padding: '10px 12px', transition: 'all 0.15s' }}>
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={e => { setInput(e.target.value); autoResize(); }}
-                onKeyDown={handleKey}
-                placeholder={streaming ? 'JARVIS is thinking...' : 'Message JARVIS…  (Shift+Enter for newline)'}
-                rows={1}
-                disabled={streaming}
-                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 14, resize: 'none', lineHeight: 1.6, maxHeight: 160, overflowY: 'auto', fontFamily: 'Inter, sans-serif', paddingTop: 2 }}
-              />
-              <VoiceButton onTranscript={t => { setInput(t); setTimeout(() => sendMessage(t), 100); }} disabled={streaming} />
-              <button
-                onClick={() => sendMessage()}
-                disabled={!input.trim() || streaming}
-                style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: input.trim() && !streaming ? 'var(--accent)' : 'var(--bg-elevated)', color: input.trim() && !streaming ? 'white' : 'var(--text-muted)', cursor: input.trim() && !streaming ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, transition: 'all 0.15s' }}
-              >↑</button>
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
-              JARVIS v1.0 · {API.replace('https://','')} · Memory enabled
-            </div>
-          </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {MODES.map(m => (
+            <button key={m} onClick={() => setMode(m)}
+              style={{
+                padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                border: mode === m ? '1px solid rgba(255,140,40,0.6)' : '1px solid rgba(255,255,255,0.06)',
+                background: mode === m ? 'rgba(255,120,20,0.12)' : 'transparent',
+                color: mode === m ? 'rgba(255,180,60,0.95)' : 'rgba(255,255,255,0.35)',
+                transition: 'all 0.15s',
+              }}
+            >{m}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5 }}>{status}</span>
+          <button onClick={() => setChatOpen(o => !o)}
+            style={{ padding: '4px 10px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>
+            {chatOpen ? 'Hide Chat' : 'Show Chat'}
+          </button>
         </div>
       </div>
+
+      {/* Main content */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+        {/* Orb */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+          <div style={{ position: 'relative' }}>
+            <JarvisOrb size={orbSize} active={active || recording} />
+            {/* Center label */}
+            <div style={{ position: 'absolute', bottom: '18%', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none' }}>
+              {thinking ? (
+                <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
+                  {[0,1,2].map(i => <div key={i} className="dot-bounce" style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,160,50,0.8)', animationDelay: `${i*0.2}s` }} />)}
+                </div>
+              ) : (
+                <span style={{ fontSize: 11, color: 'rgba(255,160,50,0.4)', letterSpacing: 2, textTransform: 'uppercase' }}>{mode}</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Chat panel */}
+        {chatOpen && (
+          <div style={{
+            width: 380, borderLeft: '1px solid rgba(255,140,40,0.08)', background: 'rgba(8,5,0,0.85)',
+            backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,140,40,0.08)', fontSize: 11, fontWeight: 600, color: 'rgba(255,160,60,0.6)', letterSpacing: 2, textTransform: 'uppercase' }}>
+              Chat · {mode}
+            </div>
+
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {messages.length === 0 && (
+                <div style={{ textAlign: 'center', marginTop: 40 }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>⬡</div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', lineHeight: 1.6 }}>JARVIS is ready.<br />Type or speak to begin.</div>
+                  {/* Quick prompts */}
+                  <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {['What can you do?', 'Search the web for me', 'Run a coding task'].map(q => (
+                      <button key={q} onClick={() => send(q)}
+                        style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid rgba(255,140,40,0.15)', background: 'rgba(255,100,20,0.05)', color: 'rgba(255,200,100,0.6)', fontSize: 12, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(255,140,40,0.4)')}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,140,40,0.15)')}
+                      >{q}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {messages.map((msg, i) => (
+                <div key={i} className="fade-up" style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                  {msg.role === 'assistant' && msg.agent && (
+                    <span style={{ fontSize: 10, color: 'rgba(255,140,40,0.5)', marginBottom: 3, letterSpacing: 1, textTransform: 'uppercase' }}>{msg.agent}</span>
+                  )}
+                  <div style={{
+                    maxWidth: '88%', padding: '10px 14px', borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                    background: msg.role === 'user' ? 'rgba(255,120,20,0.2)' : 'rgba(255,255,255,0.04)',
+                    border: msg.role === 'user' ? '1px solid rgba(255,120,20,0.35)' : '1px solid rgba(255,255,255,0.07)',
+                    fontSize: 13, lineHeight: 1.65, color: msg.role === 'user' ? 'rgba(255,210,130,0.95)' : 'rgba(240,240,248,0.85)',
+                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  }}>{msg.content}</div>
+                </div>
+              ))}
+              {thinking && (
+                <div className="fade-up" style={{ display: 'flex', gap: 5, padding: '10px 14px' }}>
+                  {[0,1,2].map(i => <div key={i} className="dot-bounce" style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,140,50,0.7)', animationDelay: `${i*0.2}s` }} />)}
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Input */}
+            <div style={{ padding: '12px', borderTop: '1px solid rgba(255,140,40,0.08)' }}>
+              <div style={{
+                display: 'flex', alignItems: 'flex-end', gap: 8,
+                background: 'rgba(255,100,20,0.05)', border: '1px solid rgba(255,140,40,0.15)',
+                borderRadius: 14, padding: '8px 10px', transition: 'border-color 0.15s',
+              }}
+                onFocus={() => {}}
+              >
+                <textarea
+                  ref={textRef}
+                  value={input}
+                  onChange={e => { setInput(e.target.value); autoResize() }}
+                  onKeyDown={handleKey}
+                  placeholder={thinking ? 'JARVIS is thinking…' : 'Ask JARVIS anything…'}
+                  disabled={thinking}
+                  rows={1}
+                  style={{
+                    flex: 1, background: 'none', border: 'none', outline: 'none', resize: 'none',
+                    color: 'rgba(255,220,140,0.9)', fontSize: 13, lineHeight: 1.6, maxHeight: 140,
+                    fontFamily: 'inherit', paddingTop: 2, caretColor: '#ff9500',
+                  }}
+                />
+                {/* Voice */}
+                <button
+                  onMouseDown={startVoice} onMouseUp={stopVoice}
+                  onTouchStart={startVoice} onTouchEnd={stopVoice}
+                  disabled={thinking}
+                  style={{
+                    width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0,
+                    background: recording ? 'rgba(255,80,80,0.3)' : 'rgba(255,100,20,0.08)',
+                    color: recording ? '#ff6060' : 'rgba(255,160,60,0.6)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                    boxShadow: recording ? '0 0 12px rgba(255,80,80,0.4)' : 'none',
+                    transition: 'all 0.15s',
+                  }}
+                  title="Hold to talk"
+                >🎤</button>
+                {/* Send */}
+                <button
+                  onClick={() => send(input)}
+                  disabled={!input.trim() || thinking}
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, border: 'none', cursor: input.trim() && !thinking ? 'pointer' : 'default', flexShrink: 0,
+                    background: input.trim() && !thinking ? 'rgba(255,120,20,0.3)' : 'rgba(255,255,255,0.04)',
+                    color: input.trim() && !thinking ? 'rgba(255,200,80,0.9)' : 'rgba(255,255,255,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                    border: '1px solid rgba(255,120,20,0.2)', transition: 'all 0.15s',
+                  }}
+                >↑</button>
+              </div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)', textAlign: 'center', marginTop: 6, letterSpacing: 0.5 }}>
+                JARVIS · {API.replace('https://','')}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }
