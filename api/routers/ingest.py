@@ -51,11 +51,7 @@ async def _fetch_and_store(db: AsyncSession, filename: str, content: str, source
         text("""INSERT INTO memories (content, category, importance, metadata, embedding)
                 VALUES (:content, :category, :importance, :metadata, :embedding::vector)"""),
         {
-            "content": f"[INGESTED: {filename}]
-
-{summary}
-
-Source: {source_url}",
+            "content": f"[INGESTED: {filename}]\n\n{summary}\n\nSource: {source_url}",
             "category": category,
             "importance": 0.85,
             "metadata": json.dumps({"filename": filename, "source_url": source_url, "raw_length": len(content)}),
