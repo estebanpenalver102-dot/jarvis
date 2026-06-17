@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: jarvis
+    runtime: docker
+    dockerfilePath: ./api/Dockerfile
+    region: oregon
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jarvis-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: jarvis-redis
+          type: redis
+          property: connectionString
+
+databases:
+  - name: jarvis-db
+    databaseName: jarvis
+    plan: free
+    region: oregon
+
+  - name: jarvis-redis
+    plan: free
+    region: oregon
