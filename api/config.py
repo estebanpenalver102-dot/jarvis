@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from typing import Optional
 
 class Settings(BaseSettings):
@@ -13,9 +14,9 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     groq_base_url: str = "https://api.groq.com/openai/v1"
     ollama_base_url: str = "http://host.docker.internal:11434"
-    # DB
+    # DB — Render provides DATABASE_URL as postgresql://..., we need postgresql+asyncpg://
     database_url: str = "postgresql+asyncpg://jarvis:jarvis_secret@postgres:5432/jarvis"
-    redis_url: Optional[str] = None  # Optional - add Redis later for caching
+    redis_url: Optional[str] = None
     # Auth
     secret_key: str = "change-me"
     api_key_header: str = "X-JARVIS-Key"
@@ -25,6 +26,16 @@ class Settings(BaseSettings):
     spotify_client_secret: Optional[str] = None
     dealcenter_api_url: Optional[str] = None
     dealcenter_api_key: Optional[str] = None
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def fix_db_url(cls, v: str) -> str:
+        # Render provides postgresql:// or postgres://, asyncpg needs postgresql+asyncpg://
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://"):
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     class Config:
         env_file = ".env"
