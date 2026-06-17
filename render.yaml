@@ -4,11 +4,11 @@ databases:
     user: jarvis
     plan: free
 
-redis:
-  - name: jarvis-redis
+services:
+  - type: redis
+    name: jarvis-redis
     plan: free
 
-services:
   - type: web
     name: jarvis-api
     env: docker
