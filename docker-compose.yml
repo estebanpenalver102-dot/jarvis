@@ -1,47 +1,57 @@
-version: '3.9'
+version: "3.9"
 
 services:
+  api:
+    build: ./api
+    container_name: jarvis_api
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://jarvis:jarvis_secret@postgres:5432/jarvis
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./api:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: jarvis_postgres
-    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-jarvis}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jarvis_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-jarvis_db}
+      POSTGRES_DB: jarvis
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: jarvis_secret
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jarvis"]
+      test: ["CMD-SHELL", "pg_isready -U jarvis -d jarvis"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  api:
-    build: ./api
-    container_name: jarvis_api
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-jarvis}:${POSTGRES_PASSWORD:-jarvis_secret}@postgres:5432/${POSTGRES_DB:-jarvis_db}
-    ports:
-      - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./api:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
   redis:
     image: redis:7-alpine
     container_name: jarvis_redis
-    restart: unless-stopped
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:

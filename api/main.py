@@ -1,61 +1,45 @@
-"""
-JARVIS API — Phase 1 Walking Skeleton
-FastAPI application with PostgreSQL + pgvector, memory system, agent routing
-"""
+"""JARVIS API — Phase 3: Multi-Agent System"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from loguru import logger
-
-from config import settings
-from routers import health, memory, chat, tools
-
-# Import tools to register them
-import tools.base_tools  # noqa: F401
-
+from database import engine, Base
+from routers import health, memory, chat, tools, agents
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info(f"JARVIS API starting — env={settings.app_env}")
-    logger.info("Phase 1: Walking Skeleton | Memory ✓ | Agents ✓ | Tools ✓")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield
-    logger.info("JARVIS API shutdown")
-
 
 app = FastAPI(
-    title="JARVIS — Personal AI Operating System",
-    description="Phase 1: Foundation — FastAPI + PostgreSQL + pgvector + Multi-Agent Scaffold",
-    version="0.1.0-phase1",
+    title="JARVIS API",
+    description="Personal AI Operating System — Phase 3: Multi-Agent System",
+    version="0.3.0",
     lifespan=lifespan,
 )
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
 )
 
-# Register routers
-app.include_router(health.router)
-app.include_router(memory.router)
-app.include_router(chat.router)
-app.include_router(tools.router)
-
+for router in [health.router, memory.router, chat.router, tools.router, agents.router]:
+    app.include_router(router)
 
 @app.get("/")
 async def root():
     return {
-        "system": "JARVIS",
-        "status": "online",
-        "phase": "1 — Foundation",
+        "name": "JARVIS",
+        "version": "0.3.0",
+        "phase": "Phase 3 — Multi-Agent System",
+        "agents": ["cto", "sales", "coding", "research", "operations"],
         "endpoints": {
-            "health":  "/health",
-            "pgvector": "/health/pgvector",
-            "chat":    "/chat",
-            "memory":  "/memory",
-            "tools":   "/tools",
-            "docs":    "/docs",
+            "chat": "POST /chat",
+            "agents": "POST /agents",
+            "memory": "GET/POST /memory",
+            "memory_search": "GET /memory/search?q=...",
+            "tools": "GET /tools",
+            "health": "GET /health",
+            "docs": "GET /docs",
         },
     }

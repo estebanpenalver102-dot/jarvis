@@ -1,34 +1,33 @@
 from pydantic_settings import BaseSettings
-from functools import lru_cache
+from typing import Optional
 
 class Settings(BaseSettings):
-    # Database
-    database_url: str = "postgresql+asyncpg://jarvis:jarvis_secret@localhost:5432/jarvis_db"
-
-    # LLM
-    openai_api_key: str = ""
-    gemini_api_key: str = ""
-
-    # LiveKit
-    livekit_url: str = ""
-    livekit_api_key: str = ""
-    livekit_api_secret: str = ""
-
+    environment: str = "development"
+    # LLM — primary
+    openai_api_key: Optional[str] = None
+    openai_model: str = "gpt-4o-mini"
+    openai_embedding_model: str = "text-embedding-3-small"
+    # LLM — free fallbacks
+    openrouter_api_key: Optional[str] = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    groq_api_key: Optional[str] = None
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    ollama_base_url: str = "http://host.docker.internal:11434"
+    # DB
+    database_url: str = "postgresql+asyncpg://jarvis:jarvis_secret@postgres:5432/jarvis"
+    redis_url: str = "redis://redis:6379/0"
     # Auth
-    jwt_secret: str = "dev_secret"
-    jwt_algorithm: str = "HS256"
-    jwt_expire_hours: int = 24
-
-    # App
-    app_env: str = "development"
-    log_level: str = "INFO"
+    secret_key: str = "change-me"
+    api_key_header: str = "X-JARVIS-Key"
+    # Integrations
+    serpapi_key: Optional[str] = None
+    spotify_client_id: Optional[str] = None
+    spotify_client_secret: Optional[str] = None
+    dealcenter_api_url: Optional[str] = None
+    dealcenter_api_key: Optional[str] = None
 
     class Config:
         env_file = ".env"
-        case_sensitive = False
+        extra = "ignore"
 
-@lru_cache()
-def get_settings() -> Settings:
-    return Settings()
-
-settings = get_settings()
+settings = Settings()
