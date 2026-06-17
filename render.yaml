@@ -25,13 +25,13 @@ services:
           type: redis
           property: connectionString
 
-databases:
-  - name: jarvis-db
-    databaseName: jarvis
+  - type: redis
+    name: jarvis-redis
     plan: free
     region: oregon
 
-redis:
-  - name: jarvis-redis
+databases:
+  - name: jarvis-db
+    databaseName: jarvis
     plan: free
     region: oregon
