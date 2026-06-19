@@ -46,6 +46,6 @@ services:
     plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        value: https://jarvis-mq5i.onrender.com
+        value: https://jarvis-api-fufo.onrender.com
       - key: PORT
         value: "3000"

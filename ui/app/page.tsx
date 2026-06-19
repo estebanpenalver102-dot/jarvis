@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import JarvisOrb from '../components/JarvisOrb'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://jarvis-mq5i.onrender.com'
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://jarvis-api-fufo.onrender.com'
 
 interface Message { role: 'user' | 'assistant'; content: string; agent?: string; ts: number }
 
@@ -112,7 +112,7 @@ export default function Home() {
       {/* Corner HUD lines */}
       {[['top','left'],['top','right'],['bottom','left'],['bottom','right']].map(([v, h]) => (
         <div key={v+h} style={{
-          position: 'absolute', [v]: 16, [h]: 16, width: 32, height: 32,
+          position: 'absolute', [v as string]: 16, [h as string]: 16, width: 32, height: 32,
           borderTop: v === 'top' ? '1px solid rgba(255,140,40,0.3)' : 'none',
           borderBottom: v === 'bottom' ? '1px solid rgba(255,140,40,0.3)' : 'none',
           borderLeft: h === 'left' ? '1px solid rgba(255,140,40,0.3)' : 'none',
@@ -126,7 +126,7 @@ export default function Home() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff9500', boxShadow: '0 0 8px #ff9500' }} />
           <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,200,80,0.9)', textTransform: 'uppercase' }}>JARVIS</span>
-          <span style={{ fontSize: 10, color: 'rgba(255,140,40,0.5)', letterSpacing: 1 }}>v1.0 · ONLINE</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,140,40,0.5)', letterSpacing: 1 }}>v2.0 · ONLINE</span>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           {MODES.map(m => (
@@ -225,9 +225,7 @@ export default function Home() {
                 display: 'flex', alignItems: 'flex-end', gap: 8,
                 background: 'rgba(255,100,20,0.05)', border: '1px solid rgba(255,140,40,0.15)',
                 borderRadius: 14, padding: '8px 10px', transition: 'border-color 0.15s',
-              }}
-                onFocus={() => {}}
-              >
+              }}>
                 <textarea
                   ref={textRef}
                   value={input}
@@ -242,7 +240,6 @@ export default function Home() {
                     fontFamily: 'inherit', paddingTop: 2, caretColor: '#ff9500',
                   }}
                 />
-                {/* Voice */}
                 <button
                   onMouseDown={startVoice} onMouseUp={stopVoice}
                   onTouchStart={startVoice} onTouchEnd={stopVoice}
@@ -257,12 +254,11 @@ export default function Home() {
                   }}
                   title="Hold to talk"
                 >🎤</button>
-                {/* Send */}
                 <button
                   onClick={() => send(input)}
                   disabled={!input.trim() || thinking}
                   style={{
-                    width: 36, height: 36, borderRadius: 10, border: 'none', cursor: input.trim() && !thinking ? 'pointer' : 'default', flexShrink: 0,
+                    width: 36, height: 36, borderRadius: 10, cursor: input.trim() && !thinking ? 'pointer' : 'default', flexShrink: 0,
                     background: input.trim() && !thinking ? 'rgba(255,120,20,0.3)' : 'rgba(255,255,255,0.04)',
                     color: input.trim() && !thinking ? 'rgba(255,200,80,0.9)' : 'rgba(255,255,255,0.2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
