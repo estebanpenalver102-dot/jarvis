@@ -181,3 +181,11 @@ async def get_embedding(text: str) -> list[float]:
     except Exception as e:
         logger.warning(f"[JARVIS] Embedding failed: {e}")
         return [0.0] * 1536
+
+
+def get_openai() -> "AsyncOpenAI":
+    """Return a synchronous-style AsyncOpenAI client using the configured API key.
+    Used by voice/pipeline.py and any module that needs a direct OpenAI client handle."""
+    from openai import AsyncOpenAI as _AsyncOpenAI
+    from config import settings
+    return _AsyncOpenAI(api_key=settings.openai_api_key or "no-key")
