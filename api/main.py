@@ -11,6 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import text
 from database import engine, Base
+# ── Import all ORM models so Base.metadata is populated before create_all ──
+import models.memory  # noqa: F401
+import models.chat    # noqa: F401
 from security import SecurityGuardMiddleware, RateLimitMiddleware, set_admin_token
 
 logger = logging.getLogger("jarvis.startup")
