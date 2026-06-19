@@ -39,7 +39,13 @@ class ChatResponse(BaseModel):
 
 @router.post("", response_model=ChatResponse)
 async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
-    session_id = body.session_id or str(uuid.uuid4())
+    # Validate session_id is a proper UUID; generate fresh one if not
+    raw_sid = body.session_id or ""
+    try:
+        uuid.UUID(raw_sid)
+        session_id = raw_sid
+    except (ValueError, AttributeError):
+        session_id = str(uuid.uuid4())
 
     # ── Security gate: refuse secret-probe + injection attempts ──────────────
     if contains_secret_request(body.message):
