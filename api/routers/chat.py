@@ -11,7 +11,7 @@ from memory.store import save_memory, search_memories_semantic
 from memory.extractor import extract_and_store
 from llm.client import chat_completion
 from agents.orchestrator import route_goal
-from security import SECURITY_SYSTEM_PROMPT, contains_secret_request
+from security import SECURITY_SYSTEM_PROMPT, contains_secret_request, sanitize_user_input
 from typing import Optional
 import uuid
 
@@ -41,7 +41,7 @@ class ChatResponse(BaseModel):
 async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
     session_id = body.session_id or str(uuid.uuid4())
 
-    # ── Security gate: refuse requests that ask for secrets ───────────────────
+    # ── Security gate: refuse secret-probe + injection attempts ──────────────
     if contains_secret_request(body.message):
         return ChatResponse(
             session_id=session_id,
@@ -55,12 +55,15 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
             memories_used=0,
         )
 
+    # Sanitize user input before it reaches the LLM (prompt injection prevention)
+    safe_message = sanitize_user_input(body.message)
+
     session = await db.get(ChatSession, uuid.UUID(session_id))
     if not session:
         session = ChatSession(id=uuid.UUID(session_id), title=body.message[:50])
         db.add(session)
 
-    # Save user message
+    # Save original (unsanitized) message in DB for history display
     user_msg = ChatMessage(session_id=uuid.UUID(session_id), role="user", content=body.message)
     db.add(user_msg)
     await save_memory(db, f"User: {body.message}", category="episodic",
@@ -87,8 +90,13 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
             .limit(10)
         )
         history = list(reversed(history_result.scalars().all()))
-        messages = [{"role": m.role, "content": m.content} for m in history
-                    if m.role in ("user", "assistant")]
+        # Use sanitized message for the most recent turn; keep history as-is
+        messages = []
+        for m in history:
+            if m.role in ("user", "assistant"):
+                # Apply delimiter wrapping to user messages to prevent injection via history
+                content = sanitize_user_input(m.content) if m.role == "user" else m.content
+                messages.append({"role": m.role, "content": content})
 
         system = JARVIS_SYSTEM_PROMPT + memory_context
         response_text = await chat_completion(messages, system_prompt=system)
