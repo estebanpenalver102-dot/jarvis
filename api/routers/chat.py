@@ -11,6 +11,7 @@ from memory.store import save_memory, search_memories_semantic
 from memory.extractor import extract_and_store
 from llm.client import chat_completion
 from agents.orchestrator import route_goal
+from security import SECURITY_SYSTEM_PROMPT, contains_secret_request
 from typing import Optional
 import uuid
 
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 JARVIS_SYSTEM_PROMPT = """You are JARVIS, a personal AI Operating System. You are stateful,
 multimodal, and proactive. You help manage businesses, websites, communications, research,
 automations, and personal workflows. Be concise, direct, and actionable.
-You have memory of past conversations — use it to personalize responses."""
+You have memory of past conversations — use it to personalize responses.""" + SECURITY_SYSTEM_PROMPT
 
 
 class ChatRequest(BaseModel):
@@ -39,6 +40,21 @@ class ChatResponse(BaseModel):
 @router.post("", response_model=ChatResponse)
 async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
     session_id = body.session_id or str(uuid.uuid4())
+
+    # ── Security gate: refuse requests that ask for secrets ───────────────────
+    if contains_secret_request(body.message):
+        return ChatResponse(
+            session_id=session_id,
+            message_id=str(uuid.uuid4()),
+            response=(
+                "I'm not able to share API keys, credentials, or environment "
+                "variables — that information is protected for your security. "
+                "If you need to rotate a key, please visit your provider's "
+                "dashboard directly."
+            ),
+            memories_used=0,
+        )
+
     session = await db.get(ChatSession, uuid.UUID(session_id))
     if not session:
         session = ChatSession(id=uuid.UUID(session_id), title=body.message[:50])

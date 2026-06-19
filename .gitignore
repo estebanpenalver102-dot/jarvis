@@ -1,4 +1,14 @@
+# ── Secrets & environment files ─────────────────────────────────────────────
+# All .env variants are blocked from git — never commit real secrets
 .env
+.env.*
+*.env
+# Allow example/template files
+!.env.example
+!.env.*.example
+!*.env.example
+
+# ── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
@@ -8,6 +18,21 @@ dist/
 build/
 .venv/
 venv/
+
+# ── Node / Next.js ──────────────────────────────────────────────────────────
+node_modules/
+.next/
+ui/.next/
+
+# ── Credentials & secrets (belt-and-suspenders) ──────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+
+# ── Docs / misc ─────────────────────────────────────────────────────────────
 docs/*.vtt
 docs/transcripts_combined.txt
 docs/video_patterns.txt
