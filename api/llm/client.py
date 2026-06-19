@@ -164,3 +164,20 @@ async def chat_completion(
         "I'm having trouble connecting to my AI providers right now. "
         "All models in the chain are unavailable. Please try again in a moment."
     )
+
+
+async def get_embedding(text: str) -> list[float]:
+    """Generate text embedding using OpenAI. Falls back to zero-vector on failure."""
+    from config import settings
+    if not settings.openai_api_key:
+        return [0.0] * 1536  # OpenAI embedding dimension
+    try:
+        client = _make_client(api_key=settings.openai_api_key)
+        resp = await client.embeddings.create(
+            model=settings.openai_embedding_model,
+            input=text,
+        )
+        return resp.data[0].embedding
+    except Exception as e:
+        logger.warning(f"[JARVIS] Embedding failed: {e}")
+        return [0.0] * 1536
