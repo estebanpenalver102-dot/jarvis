@@ -1,1 +1,159 @@
-IiIiSkFSVklTIEFQSSB2MS4wIOKAlCBQZXJzb25hbCBBSSBPcGVyYXRpbmcgU3lzdGVtIiIiCmltcG9ydCBvcwppbXBvcnQgc2VjcmV0cwppbXBvcnQgaGFzaGxpYgppbXBvcnQgbG9nZ2luZwpmcm9tIGZhc3RhcGkgaW1wb3J0IEZhc3RBUEkKZnJvbSBmYXN0YXBpLm1pZGRsZXdhcmUuY29ycyBpbXBvcnQgQ09SU01pZGRsZXdhcmUKZnJvbSBjb250ZXh0bGliIGltcG9ydCBhc3luY2NvbnRleHRtYW5hZ2VyCmZyb20gc3FsYWxjaGVteSBpbXBvcnQgdGV4dApmcm9tIGRhdGFiYXNlIGltcG9ydCBlbmdpbmUsIEJhc2UKZnJvbSBzZWN1cml0eSBpbXBvcnQgU2VjdXJpdHlHdWFyZE1pZGRsZXdhcmUsIFJhdGVMaW1pdE1pZGRsZXdhcmUsIHNldF9hZG1pbl90b2tlbgoKbG9nZ2VyID0gbG9nZ2luZy5nZXRMb2dnZXIoImphcnZpcy5zdGFydHVwIikKCiMg4pSA4pSAIEFsbG93ZWQgb3JpZ2lucyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKX0FMTE9XRURfT1JJR0lOUyA9IFtvLnN0cmlwKCkgZm9yIG8gaW4gb3MuZ2V0ZW52KAogICAgIkNPUlNfT1JJR0lOUyIsCiAgICAiaHR0cHM6Ly9qYXJ2aXMub3BlbnJvYWQtYXV0b3MuY29tLGh0dHBzOi8vb3BlbnJvYWQtYXV0b3MuY29tLGh0dHA6Ly9sb2NhbGhvc3Q6MzAwMCIKKS5zcGxpdCgiLCIpIGlmIG8uc3RyaXAoKV0KCiMg4pSA4pSAIFJMUyBtaWdyYXRpb24gU1FMIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogX1JMU19TUUwgPSAiIiIKQUxURVIgVEFCTEUgSUYgRVhJU1RTIG1lbW9yaWVzICAgICAgICAgIEVOQUJMRSBST1cgTEVWRUwgU0VDVVJJVFk7CkFMVEVSIFRBQkxFIElGIEVYSVNUUyBwcm9qZWN0cyAgICAgICAgICBFTkFCTEUgUk9XIExFVkVMIFNFQ1VSSVRZOwpBTFRFUiBUQUJMRSBJRiBFWElTVFMgdGFza3MgICAgICAgICAgICAgRU5BQkxFIFJPVyBMRVZFTCBTRUNVUklUWTsKQUxURVIgVEFCTEUgSUYgRVhJU1RTIGJ1c2luZXNzZXMgICAgICAgIEVOQUJMRSBST1cgTEVWRUwgU0VDVVJJVFk7CkFMVEVSIFRBQkxFIElGIEVYSVNUUyBkZWxlZ2F0aW9ucyAgICAgICBFTkFCTEUgUk9XIExFVkVMIFNFQ1VSSVRZOwpBTFRFUiBUQUJMRSBJRiBFWElTVFMgZXhlY3V0aW9uX2hpc3RvcnkgRU5BQkxFIFJPVyBMRVZFTCBTRUNVUklUWTsKQUxURVIgVEFCTEUgSUYgRVhJU1RTIGtub3dsZWRnZV9ncmFwaCAgIEVOQUJMRSBST1cgTEVWRUwgU0VDVVJJVFk7CkFMVEVSIFRBQkxFIElGIEVYSVNUUyBldmVudHMgICAgICAgICAgICBFTkFCTEUgUk9XIExFVkVMIFNFQ1VSSVRZOwpBTFRFUiBUQUJMRSBJRiBFWElTVFMgY2hhdF9zZXNzaW9ucyAgICAgRU5BQkxFIFJPVyBMRVZFTCBTRUNVUklUWTsKQUxURVIgVEFCTEUgSUYgRVhJU1RTIGNoYXRfbWVzc2FnZXMgICAgIEVOQUJMRSBST1cgTEVWRUwgU0VDVVJJVFk7CgpETyAkJApERUNMQVJFIHQgdGV4dDsKQkVHSU4KICBGT1IgdCBJTiBTRUxFQ1QgdW5uZXN0KEFSUkFZWwogICAgJ21lbW9yaWVzJywncHJvamVjdHMnLCd0YXNrcycsJ2J1c2luZXNzZXMnLAogICAgJ2RlbGVnYXRpb25zJywnZXhlY3V0aW9uX2hpc3RvcnknLCdrbm93bGVkZ2VfZ3JhcGgnLCdldmVudHMnLAogICAgJ2NoYXRfc2Vzc2lvbnMnLCdjaGF0X21lc3NhZ2VzJwogIF0pCiAgTE9PUAogICAgRVhFQ1VURSBmb3JtYXQoJ0RST1AgUE9MSUNZIElGIEVYSVNUUyBqYXJ2aXNfYmFja2VuZF9vbmx5IE9OICVJJywgdCk7CiAgICBFWEVDVVRFIGZvcm1hdCgKICAgICAgJHAkQ1JFQVRFIFBPTElDWSBqYXJ2aXNfYmFja2VuZF9vbmx5IE9OICVJCiAgICAgICAgIFVTSU5HIChjdXJyZW50X3VzZXIgPSAnJ3Bvc3RncmVzJycKICAgICAgICAgICAgICAgIE9SIGN1cnJlbnRfdXNlciA9ICcnamFydmlzJycKICAgICAgICAgICAgICAgIE9SIGN1cnJlbnRfdXNlciA9IGN1cnJlbnRfc2V0dGluZygnJ2FwcC5kYl91c2VyJycsIHRydWUpKSRwJCwKICAgICAgdAogICAgKTsKICAgIEVYRUNVVEUgZm9ybWF0KCdBTFRFUiBUQUJMRSAlSSBGT1JDRCBST1cgTEVWRUwgU0VDVVJJVFknLCB0KTsKICBFTkQgTE9PUDsKRU5EICQ$OwogIiIiCgoKYXN5bmMgZGVmIF9ib290c3RyYXBfYWRtaW5fdG9rZW4oY29ubikgLT4gc3RyOgogICAgIiIiTG9hZCBvciBnZW5lcmF0ZSB0aGUgSkFSVklTIGFkbWluIHRva2VuIOKAlCBzdG9yZWQgaW4gamFydmlzX2FkbWluIHRhYmxlLiIiIgogICAgIyBDcmVhdGUgYWRtaW4gdGFibGUgaWYgbm90IGV4aXN0cwogICAgYXdhaXQgY29ubi5leGVjdXRlKHRleHQoIiIiCiAgICAgICAgQ1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgamFydmlzX2FkbWluICgKICAgICAgICAgICAga2V5ICAgVEVYVCBQUklNQVJZIEtFWSwKICAgICAgICAgICAgdmFsdWUgVEVYVCBOT1QgTlVMTAogICAgICAgICkKICAgICIiIikpCiAgICAjIENoZWNrIGlmIHRva2VuIGFscmVhZHkgZXhpc3RzCiAgICByZXN1bHQgPSBhd2FpdCBjb25uLmV4ZWN1dGUoCiAgICAgICAgdGV4dCgiU0VMRUNUIHZhbHVlIEZST00gamFydmlzX2FkbWluIFdIRVJFIGtleSA9ICdhZG1pbl90b2tlbiInKQogICAgKQogICAgcm93ID0gcmVzdWx0LmZldGNob25lKCkKICAgIGlmIHJvdzoKICAgICAgICByZXR1cm4gcm93WzBdCiAgICAjIEdlbmVyYXRlIGEgbmV3IHJhbmRvbSB0b2tlbiBhbmQgcGVyc2lzdCBpdAogICAgdG9rZW4gPSBzZWNyZXRzLnRva2VuX2hleCgzMikKICAgIGF3YWl0IGNvbm4uZXhlY3V0ZSh0ZXh0KCIiIgogICAgICAgIElOU0VSVCBJTlRPIGphcnZpc19hZG1pbiAoa2V5LCB2YWx1ZSkgVkFMVUVTICgnYWRtaW5fdG9rZW4nLCA6dCkKICAgICAgICBPTiBDT05GTElDVCAoa2V5KSBET05PVEhJTkcKICAgICIiIiksIHsidCI6IHRva2VufSkKICAgIHJldHVybiB0b2tlbgoKCkBhc3luY2NvbnRleHRtYW5hZ2VyCmFzeW5jIGRlZiBsaWZlc3Bhbihhcmc6IEZhc3RBUEkpOgogICAgYXN5bmMgd2l0aCBlbmdpbmUuYmVnaW4oKSBhcyBjb25uOgogICAgICAgICMgMS4gRW5hYmxlIHBndmVjdG9yCiAgICAgICAgYXdhaXQgY29ubi5leGVjdXRlKHRleHQoIkNSRUFURSBFWFRFTlNJT04gSUYgTk9UIEVYSVNUUyB2ZWN0b3IiKSkKICAgICAgICAjIDIuIENyZWF0ZSBhbGwgT1JNIHRhYmxlcwogICAgICAgIGF3YWl0IGNvbm4ucnVuX3N5bmMoQmFzZS5tZXRhZGF0YS5jcmVhdGVfYWxsKQogICAgICAgICMgMy4gQXBwbHkgUkxTIG1pZ3JhdGlvbiAoaWRlbXBvdGVudCkKICAgICAgICB0cnk6CiAgICAgICAgICAgIGF3YWl0IGNvbm4uZXhlY3V0ZSh0ZXh0KF9STFNfU1FMKSkKICAgICAgICAgICAgbG9nZ2VyLmluZm8oIltKQVJWSVNdIFJMUyBwb2xpY2llcyBhcHBsaWVkLiIpCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbiBhcyBlOgogICAgICAgICAgICBsb2dnZXIud2FybmluZyhmIltKQVJWSVNdIFJMUyB3YXJuaW5nOiB7ZX0iKQogICAgICAgICMgNC4gQm9vdHN0cmFwIGFkbWluIHRva2VuCiAgICAgICAgZW52X3Rva2VuID0gb3MuZ2V0ZW52KCJKQVJWSVNFX0FETUlOX1RPS0VOIikKICAgICAgICBpZiBlbnZfdG9rZW46CiAgICAgICAgICAgIGFkbWluX3Rva2VuID0gZW52X3Rva2VuCiAgICAgICAgZWxzZToKICAgICAgICAgICAgYWRtaW5fdG9rZW4gPSBhd2FpdCBfYm9vdHN0cmFwX2FkbWluX3Rva2VuKGNvbm4pCiAgICAgICAgc2V0X2FkbWluX3Rva2VuKGFkbWluX3Rva2VuKQogICAgICAgIGxvZ2dlci5pbmZvKAogICAgICAgICAgICBmIltKQVJWSVMgQURNSU4gVE9LRU5dIHthZG1pbl90b2tlbls6OF19Li4ue2FkbWluX3Rva2VuWy04Ol19ICIKICAgICAgICAgICAgZiIoZnVsbCB0b2tlbiBpbiAvYWRtaW4vdG9rZW4gZW5kcG9pbnQpIgogICAgICAgICkKICAgIHlpZWxkCgoKYXBwID0gRmFzdEFQSSgKICAgIHRpdGxlPSJKQVJWSVMg4oCUIFBlcnNvbmFsIEFJIE9wZXJhdGluZyBTeXN0ZW0iLAogICAgZGVzY3JpcHRpb249InYxLjAg4oCUIENoYXQgwrcgVm9pY2UgwrcgQnJvd3NlciDCtyBHb2FscyDCtyBTY3JlZW4gwrcgR2l0SHViIEluZ2VzdGlvbiIsCiAgICB2ZXJzaW9uPSIxLjAuMCIsCiAgICBsaWZlc3Bhbj1saWZlc3BhbiwKICAgIGRvY3NfdXJsPU5vbmUgaWYgb3MuZ2V0ZW52KCJFTlYiLCAicHJvZHVjdGlvbiIpID09ICJwcm9kdWN0aW9uIiBlbHNlICIvZG9jcyIsCiAgICByZWRvY191cmw9Tm9uZSBpZiBvcy5nZXRlbnYoIkVOViIsICJwcm9kdWN0aW9uIikgPT0gInByb2R1Y3Rpb24iIGVsc2UgIi9yZWRvYyIsCiAgICBvcGVuYXBpX3VybD1Ob25lIGlmIG9zLmdldGVudigiRU5WIiwgInByb2R1Y3Rpb24iKSA9PSAicHJvZHVjdGlvbiIgZWxzZSAiL29wZW5hcGkuanNvbiIsCikKCiMgTWlkZGxld2FyZQphcHAuYWRkX21pZGRsZXdhcmUoCiAgICBDT1JTTWlkZGxld2FyZSwgYWxsb3dfb3JpZ2lucz1fQUxMT1dFRF9PUklHSU5TLCBhbGxvd19jcmVkZW50aWFscz1UcnVlLAogICAgYWxsb3dfbWV0aG9kcz1bIioiXSwgYWxsb3dfaGVhZGVycz1bIioiXSwKKQphcHAuYWRkX21pZGRsZXdhcmUoUmF0ZUxpbWl0TWlkZGxld2FyZSkKYXBwLmFkZF9taWRkbGV3YXJlKFNlY3VyaXR5R3VhcmRNaWRkbGV3YXJlKQoKZnJvbSByb3V0ZXJzIGltcG9ydCBoZWFsdGgsIG1lbW9yeSwgY2hhdCwgdG9vbHMsIGFnZW50cywgdm9pY2UsIGJyb3dzZXIsIGdvYWxzLCBzY3JlZW4sIGluZ2VzdApmb3Igcm91dGVyIGluIFtoZWFsdGgucm91dGVyLCBtZW1vcnkucm91dGVyLCBjaGF0LnJvdXRlciwgdG9vbHMucm91dGVyLAogICAgICAgICAgICAgICBhZ2VudHMucm91dGVyLCB2b2ljZS5yb3V0ZXIsIGJyb3dzZXIucm91dGVyLCBnb2Fscy5yb3V0ZXIsCiAgICAgICAgICAgICAgIHNjcmVlbi5yb3V0ZXIsIGluZ2VzdC5yb3V0ZXJdOgogICAgYXBwLmluY2x1ZGVfcm91dGVyKHJvdXRlcikKCgpAYXBwLmdldCgiLyIpCmFzeW5jIGRlZiByb290KCk6CiAgICByZXR1cm4gewogICAgICAgICJuYW1lIjogIkpBUlZJUyIsICJ2ZXJzaW9uIjogIjEuMC4wIiwgInN0YXR1cyI6ICJvbmxpbmUiLAogICAgICAgICJlbmRwb2ludHMiOiB7CiAgICAgICAgICAgICJQT1NUIC9jaGF0IjogICAgICAgICAgICJMTE0gY2hhdCB3aXRoIDUtdGllciBtZW1vcnkiLAogICAgICAgICAgICAiUE9TVCAvZ29hbHMiOiAgICAgICAgICAiU3VibWl0IGdvYWwg4oaSIGF1dG8taGlyZSBhZ2VudHMiLAogICAgICAgICAgICAiV1MgIC92b2ljZS93cyI6ICAgICAgICAiUmVhbC10aW1lIHZvaWNlIChXaGlzcGVyICsgVFRTKSIsCiAgICAgICAgICAgICJQT1NUIC9icm93c2VyL3NlYXJjaCI6ICJBdXRvbm9tb3VzIHdlYiByZXNlYXJjaCIsCiAgICAgICAgfQogICAgfQoKCkBhcHAuZ2V0KCIvYWRtaW4vdG9rZW4iKQphc3luYyBkZWYgZ2V0X2FkbWluX3Rva2VuKCk6CiAgICAiIiJSZXR1cm5zIGEgcGFydGlhbCBoaW50IG9mIHRoZSBhZG1pbiB0b2tlbiAoZnVsbCB0b2tlbiBpbiBSZW5kZXIgTG9ncyBhdCBzdGFydHVwKS4iIiIKICAgIGltcG9ydCBzZWN1cml0eSBhcyBfc2VjCiAgICB0b2tlbiA9IF9zZWMuX0FETUlOX1RPS0VOCiAgICBpZiBub3QgdG9rZW46CiAgICAgICAgcmV0dXJuIHsiZXJyb3IiOiAiQWRtaW4gdG9rZW4gbm90IHlldCBpbml0aWFsaXplZCJ9CiAgICByZXR1cm4gewogICAgICAgICJoaW50IjogZiJ7dG9rZW5bOjhdfS4uLnt0b2tlblstODpdfSIsCiAgICAgICAgImxlbmd0aCI6IGxlbih0b2tlbiksCiAgICAgICAgIm5vdGUiOiAiRnVsbCB0b2tlbiBsb2dnZWQgYXQgc3RhcnR1cCDigJQgY2hlY2sgUmVuZGVyIExvZ3MgdGFiLiIKICAgIH0K
+"""JARVIS API v1.0 — Personal AI Operating System"""
+import os
+import secrets
+import hashlib
+import logging
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from sqlalchemy import text
+from database import engine, Base
+from security import SecurityGuardMiddleware, RateLimitMiddleware, set_admin_token
+
+logger = logging.getLogger("jarvis.startup")
+
+# ── Allowed origins ────────────────────────────────────────────────────────────
+_ALLOWED_ORIGINS = [o.strip() for o in os.getenv(
+    "CORS_ORIGINS",
+    "https://jarvis.openroad-autos.com,https://openroad-autos.com,http://localhost:3000"
+).split(",") if o.strip()]
+
+# ── RLS migration SQL ──────────────────────────────────────────────────────────
+_RLS_SQL = """
+ALTER TABLE IF EXISTS memories          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS projects          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS tasks             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS businesses        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS delegations       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS execution_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS knowledge_graph   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS events            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS chat_sessions     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS chat_messages     ENABLE ROW LEVEL SECURITY;
+
+DO $$
+DECLARE t text;
+BEGIN
+  FOR t IN SELECT unnest(ARRAY[
+    'memories','projects','tasks','businesses',
+    'delegations','execution_history','knowledge_graph','events',
+    'chat_sessions','chat_messages'
+  ])
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS jarvis_backend_only ON %I', t);
+    EXECUTE format(
+      $p$CREATE POLICY jarvis_backend_only ON %I
+         USING (current_user = ''postgres''
+                OR current_user = ''jarvis''
+                OR current_user = current_setting(''app.db_user'', true))$p$,
+      t
+    );
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+  END LOOP;
+END $$;
+"""
+
+
+async def _bootstrap_admin_token(conn) -> str:
+    """Load or generate the JARVIS admin token — stored in jarvis_admin table."""
+    # Create admin table if not exists
+    await conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS jarvis_admin (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """))
+    # Check if token already exists
+    result = await conn.execute(
+        text("SELECT value FROM jarvis_admin WHERE key = 'admin_token'")
+    )
+    row = result.fetchone()
+    if row:
+        return row[0]
+    # Generate a new random token and persist it
+    token = secrets.token_hex(32)
+    await conn.execute(text("""
+        INSERT INTO jarvis_admin (key, value) VALUES ('admin_token', :t)
+        ON CONFLICT (key) DO NOTHING
+    """), {"t": token})
+    return token
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        # 1. Enable pgvector
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        # 2. Create all ORM tables
+        await conn.run_sync(Base.metadata.create_all)
+        # 3. Apply RLS migration (idempotent — IF EXISTS guards handle re-runs)
+        try:
+            await conn.execute(text(_RLS_SQL))
+            logger.info("[JARVIS] RLS policies applied successfully.")
+        except Exception as e:
+            logger.warning(f"[JARVIS] RLS migration warning (non-fatal): {e}")
+        # 4. Bootstrap admin token — generate once, persist forever
+        env_token = os.getenv("JARVIS_ADMIN_TOKEN")
+        if env_token:
+            admin_token = env_token
+        else:
+            admin_token = await _bootstrap_admin_token(conn)
+        set_admin_token(admin_token)
+        # Log token once so owner can retrieve it from Render Logs
+        logger.info(
+            f"[JARVIS ADMIN TOKEN] {admin_token[:8]}...{admin_token[-8:]} "
+            f"(full token in /admin/token endpoint)"
+        )
+    yield
+
+
+app = FastAPI(
+    title="JARVIS — Personal AI Operating System",
+    description="v1.0 — Chat · Voice · Browser · Goals · Screen · GitHub Ingestion",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url=None if os.getenv("ENV", "production") == "production" else "/docs",
+    redoc_url=None if os.getenv("ENV", "production") == "production" else "/redoc",
+    openapi_url=None if os.getenv("ENV", "production") == "production" else "/openapi.json",
+)
+
+# Middleware — CORS → RateLimit → SecurityGuard
+app.add_middleware(
+    CORSMiddleware, allow_origins=_ALLOWED_ORIGINS, allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
+)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityGuardMiddleware)
+
+from routers import health, memory, chat, tools, agents, voice, browser, goals, screen, ingest
+for router in [health.router, memory.router, chat.router, tools.router,
+               agents.router, voice.router, browser.router, goals.router,
+               screen.router, ingest.router]:
+    app.include_router(router)
+
+
+@app.get("/")
+async def root():
+    return {
+        "name": "JARVIS", "version": "1.0.0", "status": "online",
+        "endpoints": {
+            "POST /chat":           "LLM chat with 5-tier memory",
+            "POST /goals":          "Submit goal → auto-hire agents",
+            "WS  /voice/ws":        "Real-time voice (Whisper + TTS)",
+            "POST /browser/search": "Autonomous web research",
+        }
+    }
+
+
+@app.get("/admin/token")
+async def get_admin_token():
+    """Returns a partial hint of the admin token (full token in Render Logs at startup)."""
+    import security as _sec
+    token = _sec._ADMIN_TOKEN
+    if not token:
+        return {"error": "Admin token not yet initialized — restart service or check startup logs"}
+    return {
+        "hint": f"{token[:8]}...{token[-8:]}",
+        "length": len(token),
+        "note": "Full token logged at service startup — check Render Logs tab."
+    }
