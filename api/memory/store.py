@@ -63,12 +63,14 @@ async def search_memories_semantic(
         return []
 
     cat_filter = f"AND category = '{category}'" if category else ""
+    # Use cast(:embedding as vector) instead of :embedding::vector
+    # asyncpg misinterprets ::type casts on named params — cast() is unambiguous
     sql = text(f"""
         SELECT id, content, summary, category, importance, metadata,
-               1 - (embedding <=> :embedding::vector) AS similarity
+               1 - (embedding <=> cast(:embedding as vector)) AS similarity
         FROM memories
         WHERE embedding IS NOT NULL {cat_filter}
-        ORDER BY embedding <=> :embedding::vector
+        ORDER BY embedding <=> cast(:embedding as vector)
         LIMIT :limit
     """)
     result = await db.execute(sql, {
