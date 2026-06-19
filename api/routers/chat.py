@@ -68,6 +68,7 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
     if not session:
         session = ChatSession(id=uuid.UUID(session_id), title=body.message[:50])
         db.add(session)
+        await db.flush()  # ensure session row exists before FK-dependent message insert
 
     # Save original (unsanitized) message in DB for history display
     user_msg = ChatMessage(session_id=uuid.UUID(session_id), role="user", content=body.message)
