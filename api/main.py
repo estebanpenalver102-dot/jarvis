@@ -136,6 +136,7 @@ for router in [health.router, memory.router, chat.router, tools.router,
 async def root():
     return {
         "name": "JARVIS", "version": "1.0.0", "status": "online",
+        "deploy": "v2-secure",
         "endpoints": {
             "POST /chat":           "LLM chat with 5-tier memory",
             "POST /goals":          "Submit goal → auto-hire agents",
