@@ -4,6 +4,7 @@ Service will ALWAYS start even if DB ops fail at startup.
 """
 
 import os
+import asyncio
 import secrets
 import logging
 from fastapi import FastAPI
@@ -105,11 +106,20 @@ async def lifespan(app: FastAPI):
                 f"| hint available at /admin/token"
             )
 
-            # 5. NVIDIA routing table — non-fatal, safe if no NVIDIA_API_KEY set
+            # 5. NVIDIA routing table — runs in background so a slow model
+            #    discovery/benchmark pass never blocks port binding (this was
+            #    causing Render deploys to time out on the port scan).
             try:
                 from llm.nvidia import refresh_routing_table
-                nvidia_result = await refresh_routing_table()
-                logger.info(f"[JARVIS] NVIDIA routing table: {nvidia_result}")
+
+                async def _run_nvidia_refresh():
+                    try:
+                        result = await refresh_routing_table()
+                        logger.info(f"[JARVIS] NVIDIA routing table: {result}")
+                    except Exception as e:
+                        logger.warning(f"[JARVIS] NVIDIA routing table refresh failed: {e}")
+
+                asyncio.create_task(_run_nvidia_refresh())
             except Exception as e:
                 logger.warning(f"[JARVIS] NVIDIA routing table refresh skipped: {e}")
     except Exception as e:
@@ -173,3 +183,4 @@ async def get_admin_token():
         "length": len(token),
         "note": "Full token logged at service startup — check Render Logs tab."
     }
+
