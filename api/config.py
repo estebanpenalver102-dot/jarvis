@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
+    # LLM — NVIDIA (build.nvidia.com, OpenAI-compatible)
+    nvidia_api_key: Optional[str] = None
     # LLM — free fallbacks
     openrouter_api_key: Optional[str] = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"

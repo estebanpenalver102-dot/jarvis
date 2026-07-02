@@ -104,6 +104,14 @@ async def lifespan(app: FastAPI):
                 f"[JARVIS ADMIN TOKEN] {admin_token[:8]}...{admin_token[-8:]} "
                 f"| hint available at /admin/token"
             )
+
+            # 5. NVIDIA routing table — non-fatal, safe if no NVIDIA_API_KEY set
+            try:
+                from llm.nvidia import refresh_routing_table
+                nvidia_result = await refresh_routing_table()
+                logger.info(f"[JARVIS] NVIDIA routing table: {nvidia_result}")
+            except Exception as e:
+                logger.warning(f"[JARVIS] NVIDIA routing table refresh skipped: {e}")
     except Exception as e:
         logger.error(f"[JARVIS] Startup DB error (service still starting): {e}")
         # Generate session token as fallback so service starts
@@ -132,10 +140,10 @@ app.add_middleware(
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityGuardMiddleware)
 
-from routers import health, memory, chat, tools, agents, voice, browser, goals, screen, ingest
+from routers import health, memory, chat, tools, agents, voice, browser, goals, screen, ingest, brain
 for router in [health.router, memory.router, chat.router, tools.router,
                agents.router, voice.router, browser.router, goals.router,
-               screen.router, ingest.router]:
+               screen.router, ingest.router, brain.router]:
     app.include_router(router)
 
 
