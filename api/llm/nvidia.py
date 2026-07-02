@@ -26,6 +26,26 @@ from database import engine
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 _PROBE_MESSAGES = [{"role": "user", "content": "Reply with the single word: ok"}]
 
+# NVIDIA's /v1/models catalog lists every hosted NIM under the account —
+# embedding, rerank, reward, parsing, vision-embed, OCR/ASR/TTS models, etc.
+# Those are NOT invokable through the generic /v1/chat/completions route (they
+# 404 with "Function '<id>' not found" because they're served by a different
+# NIM endpoint shape), so they must be filtered out before benchmarking —
+# otherwise nearly every benchmark call 404s and the routing table stays
+# effectively empty even though the API key/config are correct.
+_NON_CHAT_KEYWORDS = (
+    "embed", "rerank", "reward", "parse", "clip", "guard", "safety",
+    "moderation", "retriever", "ocr", "asr", "tts", "diffusion",
+    "vila", "nemoretriever", "cosmos",
+)
+
+
+def _is_chat_model(model_id: str) -> bool:
+    """True if model_id looks like a text chat/instruct model, not an
+    embedding/rerank/vision/audio/etc. NIM that 404s on /chat/completions."""
+    lowered = model_id.lower()
+    return not any(kw in lowered for kw in _NON_CHAT_KEYWORDS)
+
 
 def _client() -> Optional[AsyncOpenAI]:
     if not settings.nvidia_api_key:
@@ -55,8 +75,12 @@ async def discover_models() -> list[str]:
         return []
     try:
         resp = await client.models.list()
-        ids = [m.id for m in resp.data]
-        logger.info(f"[NVIDIA] Discovered {len(ids)} authorized models.")
+        all_ids = [m.id for m in resp.data]
+        ids = [m for m in all_ids if _is_chat_model(m)]
+        logger.info(
+            f"[NVIDIA] Discovered {len(all_ids)} authorized models "
+            f"({len(ids)} chat-capable after filtering non-chat NIMs)."
+        )
         return ids
     except Exception as e:
         logger.warning(f"[NVIDIA] Model discovery failed (auth/quota?): {str(e)[:120]}")
