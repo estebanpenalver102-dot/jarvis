@@ -21,6 +21,21 @@ curl http://localhost:8000/health
 curl http://localhost:8000/docs
 ```
 
+## Run It Locally / Terminal Mode
+JARVIS isn't tied to any one host — it runs anywhere Docker runs:
+```bash
+git clone <this repo>
+cp .env.example .env      # add your API keys (NVIDIA/OpenAI/Groq/OpenRouter — any one works, more = better fallback)
+docker compose up --build # spins up API + Postgres + Redis locally, no cloud account needed
+```
+Then talk to it straight from the terminal instead of (or alongside) the web UI:
+```bash
+pip install requests
+python3 jarvis_cli.py                 # defaults to http://localhost:8000
+python3 jarvis_cli.py --agent         # routes through the multi-agent orchestrator
+python3 jarvis_cli.py --url https://your-deployed-instance.onrender.com
+```
+
 ## Endpoints
 | Method | Path | Description |
 |--------|------|-------------|
