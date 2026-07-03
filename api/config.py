@@ -41,15 +41,16 @@ class Settings(BaseSettings):
         elif v.startswith("postgresql://") and "+asyncpg" not in v:
             v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-        # asyncpg doesn't understand libpq's sslmode query param — it raises
-        # "connect() got an unexpected keyword argument 'sslmode'". Translate any
-        # sslmode value (require/verify-full/prefer/etc.) into asyncpg's own ssl=true,
-        # which SQLAlchemy's asyncpg dialect turns into a default TLS context.
+        # SQLAlchemy's asyncpg dialect forwards an unrecognized query key like
+        # "sslmode" straight through as a kwarg to asyncpg.connect(), but asyncpg's
+        # connect() has no "sslmode" parameter — only "ssl". asyncpg's own "ssl" kwarg
+        # does accept the same mode strings (disable/allow/prefer/require/verify-ca/
+        # verify-full), so the fix is renaming the key, not changing its value.
         parts = urlsplit(v)
         query = dict(parse_qsl(parts.query))
         mode = query.pop("sslmode", None)
-        if mode and mode.lower() != "disable":
-            query["ssl"] = "true"
+        if mode:
+            query["ssl"] = mode
         parts = parts._replace(query=urlencode(query))
         return urlunsplit(parts)
 
