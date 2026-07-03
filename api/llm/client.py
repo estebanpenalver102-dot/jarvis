@@ -1,10 +1,13 @@
 """
 JARVIS LLM Client — smart routing: free models for easy tasks, premium for complex.
-Priority for COMPLEX: OpenAI GPT-4o-mini → OpenRouter Kimi K2 → Groq → Ollama
-Priority for SIMPLE:  OpenRouter free (Gemini Flash → Llama-3) → Groq → OpenAI → Ollama
+Priority for BOTH tiers: NVIDIA (free credits, fastest-benchmarked model from the live
+routing table) first, then the existing provider waterfall as a safety net.
+Priority for COMPLEX: NVIDIA ranked → OpenAI GPT-4o-mini → OpenRouter Kimi K2 → Groq → Ollama
+Priority for SIMPLE:  NVIDIA ranked → OpenRouter free (Gemini Flash → Llama-3) → Groq → OpenAI → Ollama
 """
 from openai import AsyncOpenAI
 from config import settings
+from llm.nvidia import get_ranked_nvidia_models, NVIDIA_BASE_URL
 from loguru import logger
 from typing import Optional
 
@@ -24,6 +27,10 @@ GROQ_MODELS = [
     "llama-3.1-8b-instant",      # Fallback
 ]
 OLLAMA_MODEL = "llama3.2"
+
+# NVIDIA models to try per request. Kept small — these are benchmarked, ranked by
+# latency in provider_models, so the first 1-2 already succeeding is the common case.
+NVIDIA_MODELS_TO_TRY = 2
 
 # ── Keywords that indicate a complex task ─────────────────────────────────────
 _COMPLEX_KEYWORDS = {
@@ -64,6 +71,27 @@ async def _try_completion(
         return None
 
 
+async def _try_nvidia(full_messages: list, max_tokens: int) -> Optional[str]:
+    """Try the fastest-benchmarked NVIDIA chat models from the live routing table
+    (provider_models, refreshed by llm/nvidia.py). This is the actual point of the
+    NVIDIA integration — every agent (research/coding/cto/sales/operations) and the
+    orchestrator all call chat_completion(), so wiring NVIDIA in here is what makes
+    them NVIDIA-backed rather than just having a routing table nothing reads from."""
+    if not settings.nvidia_api_key:
+        return None
+    ranked = await get_ranked_nvidia_models(limit=NVIDIA_MODELS_TO_TRY)
+    if not ranked:
+        # Routing table not populated yet (e.g. right after a fresh deploy, before the
+        # background discovery pass completes) — fall back to the waterfall this once.
+        return None
+    client = _make_client(base_url=NVIDIA_BASE_URL, api_key=settings.nvidia_api_key)
+    for model in ranked:
+        result = await _try_completion(client, model, full_messages, max_tokens)
+        if result:
+            return result
+    return None
+
+
 async def chat_completion(
     messages: list[dict],
     model: str = None,
@@ -84,6 +112,13 @@ async def chat_completion(
         complexity = estimate_complexity(last_user)
 
     logger.info(f"[JARVIS LLM] Task complexity: {complexity}")
+
+    # ── NVIDIA first, both tiers — free credits, real benchmarked latency ────────
+    if model is None:
+        nvidia_result = await _try_nvidia(full_messages, max_tokens)
+        if nvidia_result:
+            return nvidia_result
+        logger.debug("[JARVIS LLM] NVIDIA unavailable/empty routing table — falling back")
 
     if complexity == "complex":
         # ── COMPLEX path: premium first ───────────────────────────────────────
