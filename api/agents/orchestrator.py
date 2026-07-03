@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from llm.client import chat_completion
 from loguru import logger
 import json
+import re
 
 ROUTER_PROMPT = """You are the JARVIS routing system. Given a user goal, decide which agent should handle it.
 
@@ -34,12 +35,17 @@ async def route_goal(goal: str, db: AsyncSession = None) -> dict:
     """Route a goal to the correct agent and execute it."""
     # Route
     routing_resp = await chat_completion(
-        messages=[{"role": "user", "content": ROUTER_PROMPT.format(goal=goal)}],
+        messages=[{"role": "user", "content": ROUTER_PROMPT.replace("{goal}", goal)}],
         max_tokens=100,
     )
+    agent_name = "general"
     try:
-        routing = json.loads(routing_resp.strip())
-        agent_name = routing.get("agent", "general")
+        raw = (routing_resp or "").strip()
+        # Strip ```json ... ``` fences some models add, then grab the first {...} block
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            routing = json.loads(m.group(0))
+            agent_name = routing.get("agent", "general")
     except Exception:
         agent_name = "general"
 
