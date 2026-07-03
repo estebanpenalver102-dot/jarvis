@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from typing import Optional
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 class Settings(BaseSettings):
     environment: str = "development"
@@ -16,7 +17,9 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     groq_base_url: str = "https://api.groq.com/openai/v1"
     ollama_base_url: str = "http://host.docker.internal:11434"
-    # DB — Render provides DATABASE_URL as postgresql://..., we need postgresql+asyncpg://
+    # DB — provider gives postgresql://... (Render) or postgresql://...?sslmode=require (Neon
+    # and most managed Postgres hosts); we need postgresql+asyncpg://, and asyncpg's own ssl
+    # kwarg instead of libpq's sslmode query param (asyncpg doesn't understand sslmode).
     database_url: str = "postgresql+asyncpg://jarvis:jarvis_secret@postgres:5432/jarvis"
     redis_url: Optional[str] = None
     # Auth
@@ -32,12 +35,23 @@ class Settings(BaseSettings):
     @field_validator("database_url", mode="before")
     @classmethod
     def fix_db_url(cls, v: str) -> str:
-        # Render provides postgresql:// or postgres://, asyncpg needs postgresql+asyncpg://
+        # Provider gives postgres:// or postgresql://, asyncpg needs postgresql+asyncpg://
         if v.startswith("postgres://"):
             v = v.replace("postgres://", "postgresql+asyncpg://", 1)
-        elif v.startswith("postgresql://"):
+        elif v.startswith("postgresql://") and "+asyncpg" not in v:
             v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return v
+
+        # asyncpg doesn't understand libpq's sslmode query param — it raises
+        # "connect() got an unexpected keyword argument 'sslmode'". Translate any
+        # sslmode value (require/verify-full/prefer/etc.) into asyncpg's own ssl=true,
+        # which SQLAlchemy's asyncpg dialect turns into a default TLS context.
+        parts = urlsplit(v)
+        query = dict(parse_qsl(parts.query))
+        mode = query.pop("sslmode", None)
+        if mode and mode.lower() != "disable":
+            query["ssl"] = "true"
+        parts = parts._replace(query=urlencode(query))
+        return urlunsplit(parts)
 
     class Config:
         env_file = ".env"
