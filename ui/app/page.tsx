@@ -23,7 +23,19 @@ export default function Home() {
   const chunksRef = useRef<BlobPart[]>([])
   const historyRef = useRef<{ role: string; content: string }[]>([])
 
+  // Stable session id (persisted) so the backend keeps conversation + memory continuity
+  const [sid] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    let s = window.localStorage.getItem('jarvis_sid')
+    if (!s) { s = crypto.randomUUID(); window.localStorage.setItem('jarvis_sid', s) }
+    return s
+  })
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, thinking])
+
+  // Warm the backend on load — Render's free tier sleeps after idle, so the first
+  // real message would otherwise eat a 30-60s cold start. This wakes it quietly.
+  useEffect(() => { fetch(`${API}/health`).catch(() => {}) }, [])
 
   const send = useCallback(async (text: string) => {
     const content = text.trim()
@@ -36,20 +48,39 @@ export default function Home() {
     setThinking(true)
     setActive(true)
     setStatus('Processing…')
-    try {
-      const res = await fetch(`${API}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, conversation_history: historyRef.current.slice(-12), agent_preference: mode.toLowerCase() }),
-      })
-      const data = await res.json()
-      const reply: string = data.response || data.message || '…'
-      const agentMsg: Message = { role: 'assistant', content: reply, agent: data.agent_used || 'JARVIS', ts: Date.now() }
+    // API expects { message, session_id, mode }. mode 'agent' routes through the
+    // multi-agent orchestrator; plain JARVIS chat stays 'text'.
+    const payload = { message: content, session_id: sid, mode: (mode === 'JARVIS' || mode === 'Voice') ? 'text' : 'agent' }
+    let reply = ''
+    let agentUsed: string | undefined
+    let ok = false
+    // Up to 3 tries — the first request after idle wakes the free-tier backend (~30-60s).
+    for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+      try {
+        const res = await fetch(`${API}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        reply = data.response || data.message || '…'
+        agentUsed = data.agent_used
+        ok = true
+      } catch (err) {
+        if (attempt < 2) {
+          setStatus('Waking JARVIS (free tier naps after idle)…')
+          await new Promise(r => setTimeout(r, 4000))
+        }
+      }
+    }
+    if (ok) {
+      const agentMsg: Message = { role: 'assistant', content: reply, agent: agentUsed || 'JARVIS', ts: Date.now() }
       setMessages(prev => [...prev, agentMsg])
       historyRef.current = [...historyRef.current, { role: 'assistant', content: reply }]
-      setStatus(data.agent_used ? `${data.agent_used} responded` : 'Ready')
-    } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error — is the API online?', ts: Date.now() }])
+      setStatus(agentUsed ? `${agentUsed} responded` : 'Ready')
+    } else {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Still waking up — the backend was asleep and didn\'t answer in time. Give it ~30 seconds, then send again.', ts: Date.now() }])
       setStatus('Error')
     }
     setThinking(false)
