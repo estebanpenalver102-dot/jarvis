@@ -17,6 +17,11 @@ export default function Home() {
   const [status, setStatus] = useState('Idle')
   const [recording, setRecording] = useState(false)
   const [chatOpen, setChatOpen] = useState(true)
+  const [chatsOpen, setChatsOpen] = useState(false)
+  const [chatList, setChatList] = useState<{ id: string; title: string; last_active: string }[]>([])
+  const [awake, setAwake] = useState<boolean | null>(null) // null = checking
+  const [wakeElapsed, setWakeElapsed] = useState(0)
+  const [wakeEta, setWakeEta] = useState<number | null>(null) // median of past observed wake times (seconds)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLTextAreaElement>(null)
   const mediaRef = useRef<MediaRecorder | null>(null)
@@ -24,18 +29,92 @@ export default function Home() {
   const historyRef = useRef<{ role: string; content: string }[]>([])
 
   // Stable session id (persisted) so the backend keeps conversation + memory continuity
-  const [sid] = useState(() => {
+  const [sid, setSid] = useState(() => {
     if (typeof window === 'undefined') return ''
     let s = window.localStorage.getItem('jarvis_sid')
     if (!s) { s = crypto.randomUUID(); window.localStorage.setItem('jarvis_sid', s) }
     return s
   })
 
+  const startNewChat = useCallback(() => {
+    const fresh = crypto.randomUUID()
+    window.localStorage.setItem('jarvis_sid', fresh)
+    setSid(fresh)
+    setMessages([])
+    historyRef.current = []
+    setChatsOpen(false)
+  }, [])
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, thinking])
 
-  // Warm the backend on load — Render's free tier sleeps after idle, so the first
-  // real message would otherwise eat a 30-60s cold start. This wakes it quietly.
-  useEffect(() => { fetch(`${API}/health`).catch(() => {}) }, [])
+  // Real wake tracking — not a fake countdown. We ping /health, and while it's
+  // down we show the actual elapsed seconds we've measured (never invented),
+  // plus a learned ETA from previously observed wake durations for this
+  // browser (localStorage), refined every time we witness a real one.
+  useEffect(() => {
+    let cancelled = false
+    let start: number | null = null
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const past = JSON.parse(window.localStorage.getItem('jarvis_wake_times') || '[]') as number[]
+    if (past.length) setWakeEta(Math.round(past.reduce((a, b) => a + b, 0) / past.length))
+
+    const recordWake = (seconds: number) => {
+      const updated = [...past, seconds].slice(-8) // keep last 8 observations
+      window.localStorage.setItem('jarvis_wake_times', JSON.stringify(updated))
+      setWakeEta(Math.round(updated.reduce((a, b) => a + b, 0) / updated.length))
+    }
+
+    const check = async () => {
+      try {
+        const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(6000) })
+        if (!res.ok) throw new Error('not ok')
+        if (cancelled) return
+        if (start !== null) {
+          recordWake(Math.round((Date.now() - start) / 1000))
+          if (timer) clearInterval(timer)
+          start = null
+          setWakeElapsed(0)
+        }
+        setAwake(true)
+      } catch {
+        if (cancelled) return
+        setAwake(false)
+        if (start === null) {
+          start = Date.now()
+          timer = setInterval(() => { if (start) setWakeElapsed(Math.round((Date.now() - start) / 1000)) }, 1000)
+        }
+      }
+    }
+    check()
+    const poll = setInterval(check, 3000)
+    return () => { cancelled = true; clearInterval(poll); if (timer) clearInterval(timer) }
+  }, [])
+
+  // Load the recent-chats list (for the Chats tab + orb hover) once, and again
+  // whenever it's opened so it reflects the latest session titles/order.
+  const loadChatList = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/chat/sessions?limit=30`, { signal: AbortSignal.timeout(8000) })
+      if (!res.ok) return
+      const data = await res.json()
+      setChatList(data.sessions || [])
+    } catch {}
+  }, [])
+  useEffect(() => { loadChatList() }, [loadChatList])
+
+  const openChat = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`${API}/chat/${id}/history`, { signal: AbortSignal.timeout(10000) })
+      if (!res.ok) return
+      const data = await res.json()
+      setMessages((data.messages || []).map((m: any) => ({ role: m.role, content: m.content, ts: new Date(m.created_at).getTime() })))
+      window.localStorage.setItem('jarvis_sid', id)
+      setSid(id)
+      setChatsOpen(false)
+      setChatOpen(true)
+    } catch {}
+  }, [])
 
   const send = useCallback(async (text: string) => {
     const content = text.trim()
@@ -69,7 +148,7 @@ export default function Home() {
         ok = true
       } catch (err) {
         if (attempt < 2) {
-          setStatus('Waking JARVIS (free tier naps after idle)…')
+          setStatus(wakeEta ? `Waking JARVIS… usually ~${wakeEta}s (based on past wakes)`           : 'Waking JARVIS (free tier naps after idle)…')
           await new Promise(r => setTimeout(r, 4000))
         }
       }
@@ -79,13 +158,14 @@ export default function Home() {
       setMessages(prev => [...prev, agentMsg])
       historyRef.current = [...historyRef.current, { role: 'assistant', content: reply }]
       setStatus(agentUsed ? `${agentUsed} responded` : 'Ready')
+      loadChatList()
     } else {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Still waking up — the backend was asleep and didn\'t answer in time. Give it ~30 seconds, then send again.', ts: Date.now() }])
       setStatus('Error')
     }
     setThinking(false)
     setActive(false)
-  }, [thinking, mode])
+  }, [thinking, mode, wakeEta])
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) }
@@ -155,9 +235,17 @@ export default function Home() {
       {/* Top bar */}
       <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff9500', boxShadow: '0 0 8px #ff9500' }} />
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: awake === null ? '#999' : awake ? '#3ddc4a' : '#ff3b30',
+            boxShadow: awake === false ? '0 0 8px #ff3b30' : awake ? '0 0 6px #3ddc4a' : 'none',
+          }} />
           <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,200,80,0.9)', textTransform: 'uppercase' }}>JARVIS</span>
-          <span style={{ fontSize: 10, color: 'rgba(255,140,40,0.5)', letterSpacing: 1 }}>v2.0 · ONLINE</span>
+          <span style={{ fontSize: 10, color: awake ? 'rgba(60,220,80,0.7)' : 'rgba(255,80,60,0.75)', letterSpacing: 1 }}>
+            {awake === null ? 'CHECKING…' : awake ? 'ONLINE' : (
+              wakeEta ? `WAKING · ${wakeElapsed}s (usually ~${wakeEta}s)` : `WAKING · ${wakeElapsed}s elapsed`
+            )}
+          </span>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           {MODES.map(m => (
@@ -174,6 +262,10 @@ export default function Home() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5 }}>{status}</span>
+          <button onClick={() => { setChatsOpen(o => !o); if (!chatsOpen) loadChatList() }}
+            style={{ padding: '4px 10px', borderRadius: 8, fontSize: 11, border: chatsOpen ? '1px solid rgba(255,140,40,0.5)' : '1px solid rgba(255,255,255,0.1)', background: chatsOpen ? 'rgba(255,120,20,0.12)' : 'transparent', color: chatsOpen ? 'rgba(255,180,60,0.9)' : 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>
+            Chats
+          </button>
           <button onClick={() => setChatOpen(o => !o)}
             style={{ padding: '4px 10px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>
             {chatOpen ? 'Hide Chat' : 'Show Chat'}
@@ -184,9 +276,31 @@ export default function Home() {
       {/* Main content */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
         {/* Orb */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-          <div style={{ position: 'relative' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+          onMouseEnter={() => loadChatList()}>
+          <div style={{ position: 'relative' }}
+            onMouseEnter={() => setChatsOpen(true)}
+            onMouseLeave={() => setChatsOpen(false)}>
             <JarvisOrb size={orbSize} active={active || recording} />
+            {chatsOpen && (
+              <div style={{
+                position: 'absolute', top: '50%', left: '100%', transform: 'translateY(-50%)',
+                marginLeft: 16, width: 260, maxHeight: 360, overflowY: 'auto',
+                background: 'rgba(10,6,0,0.95)', border: '1px solid rgba(255,140,40,0.2)',
+                borderRadius: 12, padding: 10, zIndex: 20, backdropFilter: 'blur(12px)',
+              }}>
+                <div style={{ fontSize: 10, letterSpacing: 1.5, color: 'rgba(255,160,60,0.6)', textTransform: 'uppercase', marginBottom: 8, padding: '0 4px' }}>Recent Chats</div>
+                <button onClick={startNewChat} style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 4, borderRadius: 8, border: '1px dashed rgba(255,140,40,0.3)', background: 'transparent', color: 'rgba(255,180,80,0.8)', fontSize: 12, cursor: 'pointer' }}>+ New Chat</button>
+                {chatList.length === 0 && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', padding: '8px 10px' }}>No past chats yet.</div>}
+                {chatList.map(c => (
+                  <button key={c.id} onClick={() => openChat(c.id)}
+                    style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 2, borderRadius: 8, border: c.id === sid ? '1px solid rgba(255,140,40,0.4)' : '1px solid transparent', background: c.id === sid ? 'rgba(255,120,20,0.1)' : 'transparent', color: 'rgba(240,230,220,0.8)', fontSize: 12, cursor: 'pointer', overflow: 'hidden' }}>
+                    <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{new Date(c.last_active).toLocaleString()}</div>
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Center label */}
             <div style={{ position: 'absolute', bottom: '18%', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none' }}>
               {thinking ? (
@@ -200,14 +314,34 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Persistent Chats sidebar — toggled from the top-bar "Chats" button */}
+        {chatsOpen && chatOpen && (
+          <div style={{
+            width: 220, borderLeft: '1px solid rgba(255,140,40,0.08)', background: 'rgba(6,4,0,0.9)',
+            backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: 10,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,160,60,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8, padding: '0 4px' }}>Chats</div>
+            <button onClick={startNewChat} style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 6, borderRadius: 8, border: '1px dashed rgba(255,140,40,0.3)', background: 'transparent', color: 'rgba(255,180,80,0.8)', fontSize: 12, cursor: 'pointer' }}>+ New Chat</button>
+            {chatList.length === 0 && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', padding: '8px 4px' }}>No past chats yet.</div>}
+            {chatList.map(c => (
+              <button key={c.id} onClick={() => openChat(c.id)}
+                style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 2, borderRadius: 8, border: c.id === sid ? '1px solid rgba(255,140,40,0.4)' : '1px solid transparent', background: c.id === sid ? 'rgba(255,120,20,0.1)' : 'transparent', color: 'rgba(240,230,220,0.8)', fontSize: 12, cursor: 'pointer', overflow: 'hidden' }}>
+                <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{new Date(c.last_active).toLocaleString()}</div>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Chat panel */}
         {chatOpen && (
           <div style={{
             width: 380, borderLeft: '1px solid rgba(255,140,40,0.08)', background: 'rgba(8,5,0,0.85)',
             backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column',
           }}>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,140,40,0.08)', fontSize: 11, fontWeight: 600, color: 'rgba(255,160,60,0.6)', letterSpacing: 2, textTransform: 'uppercase' }}>
-              Chat · {mode}
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,140,40,0.08)', fontSize: 11, fontWeight: 600, color: 'rgba(255,160,60,0.6)', letterSpacing: 2, textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Chat · {mode}</span>
+              <button onClick={startNewChat} style={{ fontSize: 10, color: 'rgba(255,180,80,0.7)', background: 'transparent', border: 'none', cursor: 'pointer', letterSpacing: 0.5 }}>+ New</button>
             </div>
 
             {/* Messages */}

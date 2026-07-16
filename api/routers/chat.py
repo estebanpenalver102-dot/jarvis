@@ -3,7 +3,7 @@ JARVIS Chat Router — Phase 2: real LLM responses + ETS pipeline.
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func as sa_func
 from pydantic import BaseModel
 from database import get_db
 from models.chat import ChatSession, ChatMessage
@@ -69,6 +69,8 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
         session = ChatSession(id=uuid.UUID(session_id), title=body.message[:50])
         db.add(session)
         await db.flush()  # ensure session row exists before FK-dependent message insert
+    else:
+        session.last_active = sa_func.now()  # keep recency accurate for the sessions list
 
     # Save original (unsanitized) message in DB for history display
     user_msg = ChatMessage(session_id=uuid.UUID(session_id), role="user", content=body.message)
@@ -131,6 +133,27 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
         agent_used=agent_used,
         memories_used=len(relevant),
     )
+
+
+@router.get("/sessions")
+async def list_sessions(limit: int = 30, db: AsyncSession = Depends(get_db)):
+    """Recent chat sessions for the UI's chat-history panel, most recently active first."""
+    result = await db.execute(
+        select(ChatSession).order_by(ChatSession.last_active.desc()).limit(limit)
+    )
+    sessions = result.scalars().all()
+    return {
+        "sessions": [
+            {
+                "id": str(s.id),
+                "title": s.title or "New chat",
+                "mode": s.mode,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "last_active": s.last_active.isoformat() if s.last_active else None,
+            }
+            for s in sessions
+        ]
+    }
 
 
 @router.get("/{session_id}/history")
