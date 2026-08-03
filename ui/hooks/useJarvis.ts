@@ -1,7 +1,18 @@
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+// FETCH_TIMEOUT_MS: previously these calls had NO timeout at all, so a
+// backend still cold-starting (or genuinely stuck) would hang the caller
+// forever with no error. 60s survives a free-tier Render cold start.
+const FETCH_TIMEOUT_MS = 60000
 const j = {
-  post: (path: string, body: any) => fetch(`${API}${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()),
-  get: (path: string) => fetch(`${API}${path}`).then(r=>r.json()),
+  post: (path: string, body: any) => fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  }).then(r => r.json()),
+  get: (path: string) => fetch(`${API}${path}`, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  }).then(r => r.json()),
 }
 export const jarvis = {
   chat: (message: string, session_id: string) => j.post('/chat', {message, session_id}),
