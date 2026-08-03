@@ -29,6 +29,15 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         "version": "0.1.0-phase1",
     }
 
+@router.get("/live")
+async def health_live():
+    """Zero-dependency liveness probe — no DB/LLM dependency, always instant,
+    even mid-boot. This is what the frontend's wake-up polling loop calls
+    (not the DB-backed /health above), so it reports true liveness even while
+    the database is still finishing its own cold start."""
+    return {"status": "ok"}
+
+
 @router.get("/pgvector")
 async def pgvector_check(db: AsyncSession = Depends(get_db)):
     """Verify pgvector extension is active."""
