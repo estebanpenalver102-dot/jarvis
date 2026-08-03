@@ -22,6 +22,8 @@ export default function Home() {
   const [awake, setAwake] = useState<boolean | null>(null) // null = checking
   const [wakeElapsed, setWakeElapsed] = useState(0)
   const [wakeEta, setWakeEta] = useState<number | null>(null) // median of past observed wake times (seconds)
+  const [wakeFailed, setWakeFailed] = useState(false) // true after 90s of no response — shows manual retry
+  const [wakeRetryTick, setWakeRetryTick] = useState(0) // bump to restart the wake-check loop
   const bottomRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLTextAreaElement>(null)
   const mediaRef = useRef<MediaRecorder | null>(null)
@@ -47,14 +49,20 @@ export default function Home() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, thinking])
 
-  // Real wake tracking — not a fake countdown. We ping /health, and while it's
-  // down we show the actual elapsed seconds we've measured (never invented),
-  // plus a learned ETA from previously observed wake durations for this
-  // browser (localStorage), refined every time we witness a real one.
+  // Real wake tracking — not a fake countdown. We ping the zero-dependency
+  // /health/live probe (instant even mid-boot, no DB wait) every 3s, and while
+  // it's down we show the actual elapsed seconds we've measured (never
+  // invented), plus a learned ETA from previously observed wake durations for
+  // this browser (localStorage), refined every time we witness a real one.
+  // Bounded to a 90s total budget — past that we stop polling and surface a
+  // clear error with a manual retry button instead of spinning forever.
+  const WAKE_POLL_INTERVAL_MS = 3000
+  const WAKE_TIMEOUT_BUDGET_MS = 90000
   useEffect(() => {
     let cancelled = false
     let start: number | null = null
     let timer: ReturnType<typeof setInterval> | null = null
+    let poll: ReturnType<typeof setInterval> | null = null
 
     const past = JSON.parse(window.localStorage.getItem('jarvis_wake_times') || '[]') as number[]
     if (past.length) setWakeEta(Math.round(past.reduce((a, b) => a + b, 0) / past.length))
@@ -65,18 +73,23 @@ export default function Home() {
       setWakeEta(Math.round(updated.reduce((a, b) => a + b, 0) / updated.length))
     }
 
+    setWakeFailed(false)
+    setAwake(null)
+
+    const stopAll = () => { if (poll) clearInterval(poll); if (timer) clearInterval(timer) }
+
     const check = async () => {
       try {
-        const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(6000) })
+        const res = await fetch(`${API}/health/live`, { signal: AbortSignal.timeout(5000) })
         if (!res.ok) throw new Error('not ok')
         if (cancelled) return
         if (start !== null) {
           recordWake(Math.round((Date.now() - start) / 1000))
-          if (timer) clearInterval(timer)
-          start = null
           setWakeElapsed(0)
         }
         setAwake(true)
+        setWakeFailed(false)
+        stopAll()
       } catch {
         if (cancelled) return
         setAwake(false)
@@ -84,12 +97,16 @@ export default function Home() {
           start = Date.now()
           timer = setInterval(() => { if (start) setWakeElapsed(Math.round((Date.now() - start) / 1000)) }, 1000)
         }
+        if (Date.now() - start >= WAKE_TIMEOUT_BUDGET_MS) {
+          setWakeFailed(true)
+          stopAll()
+        }
       }
     }
     check()
-    const poll = setInterval(check, 3000)
-    return () => { cancelled = true; clearInterval(poll); if (timer) clearInterval(timer) }
-  }, [])
+    poll = setInterval(check, WAKE_POLL_INTERVAL_MS)
+    return () => { cancelled = true; stopAll() }
+  }, [wakeRetryTick])
 
   // Load the recent-chats list (for the Chats tab + orb hover) once, and again
   // whenever it's opened so it reflects the latest session titles/order.
@@ -133,13 +150,20 @@ export default function Home() {
     let reply = ''
     let agentUsed: string | undefined
     let ok = false
-    // Up to 3 tries — the first request after idle wakes the free-tier backend (~30-60s).
-    for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+    // CHAT_FETCH_TIMEOUT_MS: previously this fetch had NO timeout at all, so a
+    // backend that never responded left the UI frozen on "Processing…"
+    // forever — exactly the "no error, no response, just hangs" bug. A 65s
+    // timeout survives a cold start (input is gated on /health/live succeeding
+    // first, so this is now a safety net, not the primary wake mechanism) and
+    // guarantees the UI always resolves to either a reply or a clear error.
+    const CHAT_FETCH_TIMEOUT_MS = 65000
+    for (let attempt = 0; attempt < 2 && !ok; attempt++) {
       try {
         const res = await fetch(`${API}/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(CHAT_FETCH_TIMEOUT_MS),
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
@@ -147,9 +171,9 @@ export default function Home() {
         agentUsed = data.agent_used
         ok = true
       } catch (err) {
-        if (attempt < 2) {
+        if (attempt < 1) {
           setStatus(wakeEta ? `Waking JARVIS… usually ~${wakeEta}s (based on past wakes)`           : 'Waking JARVIS (free tier naps after idle)…')
-          await new Promise(r => setTimeout(r, 4000))
+          await new Promise(r => setTimeout(r, 2000))
         }
       }
     }
@@ -194,7 +218,8 @@ export default function Home() {
         try {
           const res = await fetch(`${API}/voice/transcribe`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audio_b64: b64, mime_type: 'audio/webm' })
+            body: JSON.stringify({ audio_b64: b64, mime_type: 'audio/webm' }),
+            signal: AbortSignal.timeout(60000),
           })
           const d = await res.json()
           if (d.transcript) send(d.transcript)
@@ -272,6 +297,46 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      {/* Wake-up overlay — visible state instead of a blank/frozen UI while the
+          free-tier backend cold-starts. Shown while polling /health/live has
+          not yet succeeded; swaps to a clear error + manual retry after the
+          90s budget in the wake-tracking effect above is exhausted. */}
+      {awake !== true && (
+        <div style={{
+          position: 'absolute', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 30,
+          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderRadius: 12,
+          background: wakeFailed ? 'rgba(60,10,10,0.92)' : 'rgba(20,12,0,0.92)',
+          border: wakeFailed ? '1px solid rgba(255,80,60,0.4)' : '1px solid rgba(255,140,40,0.3)',
+          backdropFilter: 'blur(10px)', boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+        }}>
+          {!wakeFailed ? (
+            <>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[0, 1, 2].map(i => <div key={i} className="dot-bounce" style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,160,50,0.9)', animationDelay: `${i * 0.2}s` }} />)}
+              </div>
+              <span style={{ fontSize: 13, color: 'rgba(255,210,140,0.95)' }}>
+                Waking up JARVIS… this can take up to a minute
+                {wakeEta ? ` (usually ~${wakeEta}s)` : ''} — {wakeElapsed}s so far
+              </span>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: 13, color: 'rgba(255,160,150,0.95)' }}>
+                JARVIS didn't wake up after 90s. The backend may be down — check again?
+              </span>
+              <button
+                onClick={() => { setWakeElapsed(0); setWakeFailed(false); setWakeRetryTick(t => t + 1) }}
+                style={{
+                  padding: '5px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: '1px solid rgba(255,120,100,0.5)', background: 'rgba(255,80,60,0.15)',
+                  color: 'rgba(255,180,160,0.95)',
+                }}
+              >Retry</button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Main content */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
@@ -396,8 +461,8 @@ export default function Home() {
                   value={input}
                   onChange={e => { setInput(e.target.value); autoResize() }}
                   onKeyDown={handleKey}
-                  placeholder={thinking ? 'JARVIS is thinking…' : 'Ask JARVIS anything…'}
-                  disabled={thinking}
+                  placeholder={awake !== true ? 'Waking up JARVIS…' : thinking ? 'JARVIS is thinking…' : 'Ask JARVIS anything…'}
+                  disabled={thinking || awake !== true}
                   rows={1}
                   style={{
                     flex: 1, background: 'none', border: 'none', outline: 'none', resize: 'none',
@@ -408,7 +473,7 @@ export default function Home() {
                 <button
                   onMouseDown={startVoice} onMouseUp={stopVoice}
                   onTouchStart={startVoice} onTouchEnd={stopVoice}
-                  disabled={thinking}
+                  disabled={thinking || awake !== true}
                   style={{
                     width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0,
                     background: recording ? 'rgba(255,80,80,0.3)' : 'rgba(255,100,20,0.08)',
@@ -421,11 +486,11 @@ export default function Home() {
                 >🎤</button>
                 <button
                   onClick={() => send(input)}
-                  disabled={!input.trim() || thinking}
+                  disabled={!input.trim() || thinking || awake !== true}
                   style={{
-                    width: 36, height: 36, borderRadius: 10, cursor: input.trim() && !thinking ? 'pointer' : 'default', flexShrink: 0,
-                    background: input.trim() && !thinking ? 'rgba(255,120,20,0.3)' : 'rgba(255,255,255,0.04)',
-                    color: input.trim() && !thinking ? 'rgba(255,200,80,0.9)' : 'rgba(255,255,255,0.2)',
+                    width: 36, height: 36, borderRadius: 10, cursor: input.trim() && !thinking && awake === true ? 'pointer' : 'default', flexShrink: 0,
+                    background: input.trim() && !thinking && awake === true ? 'rgba(255,120,20,0.3)' : 'rgba(255,255,255,0.04)',
+                    color: input.trim() && !thinking && awake === true ? 'rgba(255,200,80,0.9)' : 'rgba(255,255,255,0.2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
                     border: '1px solid rgba(255,120,20,0.2)', transition: 'all 0.15s',
                   }}
