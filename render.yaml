@@ -11,7 +11,7 @@ services:
     dockerfilePath: ./api/Dockerfile
     dockerContext: ./api
     plan: free
-    healthCheckPath: /health
+    healthCheckPath: /health/live
     envVars:
       - key: DATABASE_URL
         fromDatabase:
