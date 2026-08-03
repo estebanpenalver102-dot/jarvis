@@ -40,3 +40,20 @@ services:
         value: https://jarvis-api-fufo.onrender.com
       - key: PORT
         value: "3000"
+
+  # ── OPTIONAL keep-warm cron (disabled by default) ──────────────────────────
+  # Pings jarvis-api's /health/live every 10 minutes so the free-tier instance
+  # never fully spins down. This runs entirely on Render's own infrastructure
+  # (not SureThing), so it does not touch the SureThing credit budget — the
+  # 2026-07-26 decision to stop SureThing-side keep-warm polling is unrelated.
+  # Uncomment to enable. REMOVE this block entirely once/if jarvis-api is
+  # upgraded to a paid instance type (paid instances don't spin down, so a
+  # keep-warm ping would just be wasted cron minutes at that point).
+  # - type: cron
+  #   name: jarvis-api-keepwarm
+  #   env: docker
+  #   dockerfilePath: ./api/Dockerfile
+  #   dockerContext: ./api
+  #   plan: free
+  #   schedule: "*/10 * * * *"
+  #   dockerCommand: "curl -sf https://jarvis-api-fufo.onrender.com/health/live || true"
